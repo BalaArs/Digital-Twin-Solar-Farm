@@ -56,140 +56,49 @@ The **Digital Twin Renewable Energy Solar Farm** uses an **ESP32** microcontroll
 
 ### End-to-End Architecture Diagram
 
+> The system flows **top-to-bottom** through 5 clear stages: **Input → Hardware → Processing → Output Channels → Final Outcomes**.
+
 ```mermaid
 flowchart TD
-    %% ── INPUT LAYER ──
-    subgraph INPUT["🔽 INPUT LAYER"]
-        direction TB
-        SUN["☀️ Solar Irradiance"]
-        CFG["⚙️ User Config\n(Wi-Fi SSID, Blynk Token, ESP IP)"]
-        HTTP_REQ["🌐 HTTP GET /api Requests\n(Web UI · Unreal Engine)"]
-    end
+    %% ─── STAGE 1: INPUTS ───
+    SUN["☀️ Sunlight"]
+    CFG["⚙️ Wi-Fi / Blynk Config"]
 
-    %% ── HARDWARE LAYER ──
-    subgraph HARDWARE["⚡ HARDWARE LEVEL — Physical Layer"]
-        direction TB
-        subgraph PANELS["Solar Panel Array — 4 × 6.9 V"]
-            PA["Panel A\n(Voltage)"]
-            PB["Panel B\n(Voltage)"]
-            PC["Panel C\n(Voltage)"]
-            PD["Panel D\n(Current)"]
-        end
+    %% ─── STAGE 2: HARDWARE ───
+    SUN --> PANELS["🔋 4 Solar Panels (6.9V each)\nA+B Parallel · C+D Series"]
+    PANELS --> SENSORS["📡 Sensors\nVoltage Dividers (GPIO 34,35,32)\nACS712 Current (GPIO 33)"]
+    SENSORS -->|"Analog Signals"| ESP["🧠 ESP32 Microcontroller\n12-bit ADC · Dual-Core CPU · Wi-Fi"]
+    CFG -.->|"Credentials"| ESP
 
-        subgraph SENSORS["Sensor Module"]
-            VS_A["Voltage Divider A\nGPIO 34"]
-            VS_B["Voltage Divider B\nGPIO 35"]
-            VS_C["Voltage Divider C\nGPIO 32"]
-            CS_D["ACS712 5A Sensor\nGPIO 33"]
-        end
+    %% ─── STAGE 3: PROCESSING ───
+    ESP --> PROCESS["⚙️ Firmware Processing\n1. Read ADC → Calibrate V & I\n2. Classify State (Green/Yellow/Red)\n3. Build JSON Payload"]
 
-        subgraph ESP32["ESP32 Microcontroller"]
-            ADC["12-bit SAR ADC\n(0 – 4095)"]
-            CPU["Dual-Core Xtensa LX6\nFirmware Engine"]
-            WIFI["Wi-Fi 802.11 b/g/n\nRadio"]
-        end
+    %% ─── STAGE 4: OUTPUT CHANNELS (Parallel Fan-Out) ───
+    PROCESS --> LED["🚦 Physical LEDs\n6 LEDs (2 groups × RGB)\nGPIO 14,12,13 & 25,26,27"]
+    PROCESS --> SERIAL["🖥️ Serial Monitor\n115200 baud debug log"]
+    PROCESS -->|"Every 2s\nBlynk Protocol"| BLYNK["☁️ Blynk Cloud\nVirtual Pins V0–V5"]
+    PROCESS -->|"On Request\nHTTP GET /api"| API["📡 REST API\nJSON Response on Port 80"]
 
-        subgraph LEDS["Physical LED Indicators"]
-            LED_AB["LED Group AB\nR:14 Y:12 G:13"]
-            LED_CD["LED Group CD\nR:25 Y:26 G:27"]
-        end
-    end
+    %% ─── STAGE 5: CONSUMERS & OUTCOMES ───
+    BLYNK --> DASH["📱 Blynk Dashboard\nMobile & Web Gauges"]
+    API --> WEBUI["🌐 Local Web UI\nGlassmorphic Dashboard\n(Polls every 2s)"]
+    API --> UE["🎮 Unreal Engine\n3D Digital Twin\nDynamic Materials · HUD · Spatial View"]
 
-    %% ── SOFTWARE LAYER ──
-    subgraph SOFTWARE["💻 SOFTWARE LEVEL — Firmware, Middleware & Applications"]
-        direction TB
-        subgraph FW["Embedded Firmware — Solar_Farm.ino"]
-            SAMPLE["Signal Sampling &\nCalibration"]
-            STATE["Threshold State Engine\n(≤1V Red · <5V Yellow · ≥5V Green)"]
-            TIMER["BlynkTimer\n(2000 ms cycle)"]
-            WEBSVR["WebServer :80\nREST /api"]
-        end
+    %% ─── OFFLINE ANALYTICS BRANCH ───
+    CSV["📁 Historical CSV Data"] -.->|"Offline"| ML["📈 ML Analytics\nLinear Regression\nYield & Efficiency Prediction"]
 
-        subgraph WEBUI["Local Web UI — index.html"]
-            POLL["Async Fetch Poller\n(2000 ms)"]
-            RENDER["Glassmorphism Dashboard\n& Virtual LED Display"]
-        end
-
-        subgraph UE["Unreal Engine — 3D Digital Twin"]
-            UE_REST["HTTP / VaRest\nBlueprint Client"]
-            UE_WORLD["3D Solar Farm\nVirtual Environment"]
-            UE_MAT["Dynamic Material\n& State Shaders"]
-            UE_HUD["Spatial HUD &\nTelemetry Overlay"]
-        end
-
-        subgraph ML["Analytics & ML — Jupyter Notebook"]
-            LR["Linear Regression\nPower Predictor"]
-            EFF["AC/DC Efficiency\nEstimator"]
-        end
-    end
-
-    %% ── STORAGE LAYER ──
-    subgraph STORAGE["🗄️ STORAGE LEVEL — Persistence"]
-        direction TB
-        SRAM["ESP32 SRAM\n(Runtime Buffers)"]
-        FLASH["ESP32 Flash\n(Firmware Binary)"]
-        LS["Browser localStorage\n(Saved ESP IP)"]
-        BLYNK_DB["Blynk Cloud\nTimeseries Store\n(V0–V5)"]
-        CSV["CSV Datasets\n(Google Drive)"]
-    end
-
-    %% ── OUTPUT LAYER ──
-    subgraph OUTPUT["📤 OUTPUT & OUTCOME LAYER"]
-        direction TB
-        OUT_LED["🚦 Physical LEDs\n(Hardware Status)"]
-        OUT_SERIAL["🖥️ Serial Monitor\n(115200 baud Debug)"]
-        OUT_JSON["📡 JSON REST Payload"]
-        OUT_BLYNK["☁️ Blynk Mobile &\nWeb Dashboard"]
-        OUT_WEB["🌐 Local Web UI\nReal-Time Metrics"]
-        OUT_3D["🎮 Unreal Engine\n3D Virtual Twin"]
-        OUT_ML["📈 ML Predictions\n(Yield & Efficiency)"]
-    end
-
-    %% ── CONNECTIONS ──
-    SUN --> PANELS
-    CFG -.-> ESP32
-    HTTP_REQ -.-> WEBSVR
-
-    PA --> VS_A
-    PB --> VS_B
-    PC --> VS_C
-    PD --> CS_D
-
-    VS_A -->|"Analog 0–10 V"| ADC
-    VS_B -->|"Analog 0–10 V"| ADC
-    VS_C -->|"Analog 0–10 V"| ADC
-    CS_D -->|"Analog 0–5 V"| ADC
-
-    ADC --> CPU
-    CPU <--> SRAM
-    CPU --> SAMPLE --> STATE
-
-    STATE -->|"GPIO Write"| LEDS
-    LEDS --> OUT_LED
-
-    STATE -->|"Serial.printf"| OUT_SERIAL
-    STATE --> WEBSVR
-    TIMER -->|"VirtualWrite V0–V5"| WIFI
-
-    WIFI -->|"Blynk Protocol"| BLYNK_DB
-    BLYNK_DB --> OUT_BLYNK
-
-    WEBSVR -->|"HTTP 200 JSON"| OUT_JSON
-    OUT_JSON --> POLL
-    POLL --> RENDER
-    LS <--> WEBUI
-    RENDER --> OUT_WEB
-
-    OUT_JSON --> UE_REST
-    UE_REST --> UE_MAT & UE_HUD
-    UE_MAT & UE_HUD --> UE_WORLD
-    UE_WORLD --> OUT_3D
-
-    CSV --> ML
-    ML --> OUT_ML
-
-    CPU -.-> FLASH
+    %% ─── STORAGE (Side Notes) ───
+    ESP -.->|"Runtime"| SRAM["💾 ESP32 SRAM"]
+    WEBUI -.->|"Saves IP"| LS["💾 Browser localStorage"]
+    BLYNK -.->|"History"| CLOUD_DB["💾 Cloud Timeseries DB"]
 ```
+
+**How to read this diagram:**
+1. **Start at the top** — Sunlight hits the solar panels.
+2. **Sensors** convert panel output into analog signals fed to the ESP32.
+3. **ESP32 firmware** reads, calibrates, and classifies the data.
+4. **Four parallel outputs** fan out simultaneously: physical LEDs, serial log, Blynk cloud push, and REST API.
+5. **Three consumers** pull from the REST API: local web UI, Unreal Engine 3D twin, and (offline) the ML pipeline.
 
 ---
 
