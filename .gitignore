@@ -18,3 +18,11 @@ graphify-out/.graphify_build_state.json
 secrets.h
 .env
 .env.*
+graphify-out/.graphify_labels.json.sig
+graphify-out/.graphify_labels.pending.json
+
+# Simulation harness outputs
+build/
+reports/
+data/
+*.rig.csv

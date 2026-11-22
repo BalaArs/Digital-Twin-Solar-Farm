@@ -1,21 +1,25 @@
 # Digital-Twin-Solar-Farm + simulation harness
 
 Fork of `xvishnuprasad/Digital-Twin-Solar-Farm` (remote `upstream`). Our fork is `origin`.
-Goal: a Python harness that simulates the ESP32 rig and verifies every consumer. Plan: `../SIMULATOR_PLAN.md`.
+Goal: a Python harness that simulates the ESP32 rig and verifies every consumer.
+Architecture: `docs/SIMULATION_HARNESS.md`. Plan, criteria and status: `docs/SIMULATOR_PLAN.md`.
 
 ## Layout
 - **System under test (SUT), repo root:** `Solar_Farm.ino` (ESP32 firmware: `GET /api`, Blynk V0–V5), `index.html` (web UI, polls `/api` every 2 s), `Untitled3.ipynb` (ML notebook, Kaggle Plant_2 CSVs).
-- **Harness:** `sim/` (Python 3.12, uv). Tests are in `sim/tests/`.
+- **Harness:** `sim/` (Python 3.12, uv). Tests are in `sim/tests/`. Scenarios are in `sim/scenarios/`. `sim/firmware_model.py` must stay in sync with `Solar_Farm.ino`; the FIL differential test enforces this.
 - Media (`*.mp4`, `*.mov`) is demo footage. Never read it.
 
 ## Commands
-- `uv sync` installs deps. `uv run pytest` runs the tests. `uv run ruff check --fix . && uv run ruff format .` lints and formats.
+- `uv sync` installs deps. `uv run ruff check --fix . && uv run ruff format .` lints and formats.
 - `uv run playwright install chromium` if the browser is missing.
+- `uv run pytest` runs the full suite and writes `reports/coverage.md`. `uv run pytest --run-slow` adds the arduino-cli ESP32 compile check. `-m "not ui"` skips the browser tests.
+- `uv run python -m sim serve --scenario cloudy_day [--backend fil]` starts the emulator; the control panel is at `/control`.
+- `uv run python -m sim generate kaggle --out data/kaggle` generates datasets.
 - ESP32 compile check: arduino-cli requires the folder name to match the sketch name, so copy first:
-  `d=$(mktemp -d)/Solar_Farm && mkdir -p $d && cp Solar_Farm.ino $d/ && arduino-cli compile -b esp32:esp32:esp32 $d`
+  `d=$(mktemp -d)/Solar_Farm && mkdir -p $d && cp Solar_Farm.ino $d/ && { [ -f secrets.example.h ] && cp secrets.example.h $d/secrets.h; true; } && arduino-cli compile -b esp32:esp32:esp32 $d`
 
 ## Rules
-- SUT files (`Solar_Farm.ino`, `index.html`, `Untitled3.ipynb`) change **only on `fix/*` branches**. Each fix is one defect per PR (F1–F9 in the plan), and its known-failing (`xfail`) test must become a pass. Harness work goes on other branches.
+- SUT files (`Solar_Farm.ino`, `index.html`, `Untitled3.ipynb`) change **only on `fix/*` branches**. Each fix is one defect per PR (F1–F9 in `docs/SIMULATION_HARNESS.md`). The fix removes that defect's `xfail(strict=True)` marker, and it must update `sim/firmware_model.py` whenever firmware behaviour changes. Harness work goes on other branches.
 - Every new fault or scenario gets a YAML scenario, a test, and a row in the coverage report.
 - Never commit credentials. Wi-Fi and Blynk values belong in a gitignored `secrets.h` or `.env`.
 - The notebook is committed stripped (nbstripout git filter). To read it, run `nbstripout -t Untitled3.ipynb` and read that output, never the raw JSON.

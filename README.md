@@ -18,6 +18,9 @@ An end-to-end IoT-driven smart monitoring system that captures real-time solar p
 - [System Inputs & Outputs](#-system-inputs--outputs)
 - [Real-Time Data Flow & Sequence](#-real-time-data-flow--sequence)
 - [Performance Log](#-performance-log)
+- [Simulation & Verification Harness](#-simulation--verification-harness)
+  - [Harness Architecture](#harness-architecture)
+  - [Verification Coverage & Findings](#verification-coverage--findings)
 - [Demonstration Videos](#-demonstration-videos)
 - [How It Works](#-how-it-works)
 - [Setup Instructions](#-setup-instructions)
@@ -160,6 +163,18 @@ flowchart LR
     T1 -->|"JSON /api"| T3
     T1 -->|"Blynk Cloud"| T3
     T4 -.->|"Offline Insights"| T3
+
+    subgraph T5["Tier 5 — Simulation & Verification Harness (sim/)"]
+        E1["Scenario & Physics Engine\n(pvlib · faults · seeded)"]
+        E2["Firmware-in-the-Loop\n(real .ino + C++ shim)"]
+        E3["ESP32 Emulator\n/api · /api/v2 · Mock Blynk"]
+        E4["pytest · Playwright · nbclient"]
+    end
+
+    T5 -.->|"Virtual ADC"| T1
+    T5 -.->|"Emulated /api"| T2
+    T5 -.->|"Emulated /api"| T3
+    T5 -.->|"Kaggle-schema CSVs"| T4
 ```
 
 #### Tier 1 — Embedded Firmware (`Solar_Farm.ino`)
@@ -234,6 +249,7 @@ flowchart LR
 | **Client** | Local | Browser `localStorage` | Saved ESP32 IP address | Per-browser persistent |
 | **Cloud** | Time-Series | Blynk IoT Cloud DB | V0–V5 historical telemetry, device state | Cloud-tier dependent |
 | **Offline** | File | CSV / Google Drive | Plant generation data, weather metrics | Long-term archival |
+| **Harness** | File | `data/`, `reports/`, `build/fil/` | Generated datasets, coverage reports, cached FIL binaries | Regenerable (gitignored) |
 
 ---
 
@@ -367,6 +383,79 @@ sequenceDiagram
 
 ---
 
+## 🧪 Simulation & Verification Harness
+
+> Full design: [`docs/SIMULATION_HARNESS.md`](./docs/SIMULATION_HARNESS.md) · Plan & success criteria: [`docs/SIMULATOR_PLAN.md`](./docs/SIMULATOR_PLAN.md)
+
+The harness in [`sim/`](./sim) replaces the physical rig with a configurable, seeded simulation, so **every feature above can be tested on any laptop or in CI**. No ESP32, Wi-Fi, Blynk account or Unreal Engine install is needed. It drives the **unmodified** firmware, the real `index.html` and the real notebook.
+
+### Harness Architecture
+
+```mermaid
+flowchart TD
+    YAML["📄 Scenario YAML\nseed · sun · clouds · faults · network"] --> ENG
+
+    subgraph ENG["⚙️ Scenario & Physics Engine"]
+        ENV["Irradiance (pvlib) × seeded clouds\nTemperature · per-panel Voc / Isc"]
+        FLT["Faults: disconnect · shading · degradation\nsensor noise / stuck · ADC saturation"]
+    end
+
+    ENG --> ADC["🔢 Virtual ADC (GPIO 34/35/32/33)\nideal or ESP32-faithful transfer"]
+    ADC --> FW
+
+    subgraph FW["🧠 Firmware Layer"]
+        FIL["Firmware-in-the-Loop\nSolar_Farm.ino compiled for host\n+ Arduino/WiFi/WebServer/Blynk shim"]
+        REF["Python reference model\n(float32-faithful port)"]
+        FIL <-.->|"differential test\n10 000 vectors"| REF
+    end
+
+    FW --> EMU["📡 ESP32 Emulator (FastAPI)\nGET /api · GET /api/v2 (N panels)\nlatency · hang · 500 · malformed · CORS"]
+    FW --> BLY["☁️ Mock Blynk\nV0–V5 history + HTTP API"]
+    CTRL["🎛️ Control Panel /control"] -->|"live faults"| ENG
+
+    EMU --> WEB["🌐 index.html\n(Playwright)"]
+    EMU --> UE["🎮 UE contract\n(reference poller)"]
+    ENG --> DS["📁 Dataset Generator\nKaggle Plant_2 CSVs + ground truth"] --> NB["📈 Notebook\n(nbclient)"]
+
+    WEB & UE & NB & BLY --> REP["✅ pytest → reports/coverage.md\nfeature × pass / known-defect matrix"]
+```
+
+| Capability | Where |
+|---|---|
+| Real-time (2 s ticks) or accelerated runs, byte-identical replay with the same seed | `sim/engine.py` |
+| Real firmware on your computer (FIL), differential-tested against a Python model | `sim/fil/`, `sim/firmware_model.py` |
+| Legacy 4-panel `/api` + configurable N-panel `/api/v2` | `sim/emulator.py`, `sim/contracts/` |
+| Kaggle-schema datasets (34 days × 22 inverters in < 1 s) + rig logs | `sim/datasets.py` |
+| Interactive fault injection | `http://127.0.0.1:8080/control` |
+| Scenario catalogue (clear, cloudy, night, faults, farm, ESP32-ADC, flaky network) | `sim/scenarios/` |
+
+**Quick start**
+
+```bash
+uv sync && uv run playwright install chromium
+uv run pytest                                              # full verification suite → reports/coverage.md
+uv run python -m sim serve --scenario cloudy_day --backend fil   # emulate the rig with the real sketch
+# open index.html and enter 127.0.0.1:8080 as the ESP32 IP; tweak conditions at /control
+uv run python -m sim generate kaggle --out data/kaggle     # datasets for the ML notebook
+```
+
+### Verification Coverage & Findings
+
+Each README feature maps to automated tests. A defect found in the system is recorded as a strict `xfail` test, so its fix PR must turn it green. These findings came out of building the harness:
+
+| ID | Finding | Resolution |
+|---|---|---|
+| F1 | Firmware sends no CORS header, so the browser blocks the local web UI's `fetch` | Firmware fix PR |
+| F2 | `/api` status strings are empty before the first tick and up to 2 s stale | Firmware fix PR |
+| F3 | Panel B is never classified on its own (a dead B can show only YELLOW) | Open: contract decision |
+| F4 | Current formula assumes a 0–5 V ADC; ESP32 reads 0–3.3 V | Open: confirm ACS712 wiring |
+| F5 | `setup()` hangs forever without Wi-Fi | Firmware fix PR |
+| F6 | Wi-Fi credentials committed in the sketch | Moved to gitignored `secrets.h` |
+| F7/F8 | Notebook loads the generation CSV as weather data; `r2_score` args reversed; Drive-only paths | Notebook fix PR |
+| F9 | Web UI `fetch` has no timeout (a hung device never shows Disconnected) | Web UI fix PR |
+
+---
+
 ## 🎥 Demonstration Videos
 
 | Feature | Video | Description |
@@ -449,12 +538,31 @@ char pass[] = "Your_WiFi_Password";
 ## 📂 Project Structure
 
 ```
-Digital-Twin-Solar-Farm-main/
+Digital-Twin-Solar-Farm/
 ├── Solar_Farm.ino              # ESP32 firmware (sensor processing, Blynk, REST API)
 ├── index.html                  # Local glassmorphic web dashboard
 ├── Untitled3.ipynb             # Jupyter ML notebook (Linear Regression, efficiency)
 ├── performance.log             # System performance benchmarks & metrics
 ├── README.md                   # This architecture documentation
+├── docs/
+│   ├── SIMULATION_HARNESS.md   # Harness architecture, verification strategy, findings
+│   └── SIMULATOR_PLAN.md       # Goals, success criteria, phased plan
+├── sim/                        # Simulation & verification harness (Python 3.12, uv)
+│   ├── config.py               # Scenario schema (YAML)
+│   ├── physics.py              # Irradiance, clouds, temperature, PV model, faults
+│   ├── adc.py                  # Virtual ADC (ideal / ESP32-faithful)
+│   ├── firmware_model.py       # Python reference model of Solar_Farm.ino
+│   ├── fil/                    # Firmware-in-the-loop: C++ Arduino shim + driver
+│   ├── engine.py               # Clock, tick scheduling, history
+│   ├── emulator.py             # FastAPI ESP32 emulator + mock Blynk + control API
+│   ├── datasets.py             # Kaggle-schema + rig-log generators
+│   ├── ue_poller.py            # Unreal Engine reference poller
+│   ├── contracts/              # JSON Schemas for /api v1 and /api/v2
+│   ├── scenarios/              # Scenario catalogue
+│   ├── static/control.html     # Interactive control panel
+│   └── tests/                  # pytest + Playwright + nbclient suite
+├── pyproject.toml / uv.lock    # Python project
+├── .github/workflows/ci.yml    # CI: lint + full verification suite
 ├── Digital Twin Solar Farm.mp4 # Full project demo video
 ├── BLYNK.mov                   # Blynk cloud dashboard demo
 ├── IP Web UI.mp4               # Local web UI demo
