@@ -1,0 +1,20 @@
+[project]
+name = "solar-twin-sim"
+version = "0.1.0"
+description = "Simulation & verification harness for the Digital-Twin-Solar-Farm system"
+requires-python = ">=3.12,<3.13"
+dependencies = []
+
+[dependency-groups]
+dev = ["pytest>=8", "pytest-playwright>=0.5", "ruff>=0.6"]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["*.ipynb"]
+
+[tool.pytest.ini_options]
+testpaths = ["sim/tests"]

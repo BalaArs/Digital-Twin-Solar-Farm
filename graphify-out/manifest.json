@@ -1,0 +1,21 @@
+{
+  "README.md": {
+    "mtime": 1795362690.6183193,
+    "seen": 1795362719.154757,
+    "ast_hash": "35cfe4fa0149ed20221ff3f6323e15b3",
+    "semantic_hash": ""
+  },
+  "index.html": {
+    "mtime": 1795362690.6411033,
+    "seen": 1795362719.154759,
+    "ast_hash": "c5dbf0a744f2775c24983eddf70b1619",
+    "semantic_hash": ""
+  },
+  "Solar_Farm.ino": {
+    "mtime": 1795362690.6364236,
+    "seen": 1795362732.75697,
+    "ast_hash": "21184dbf7a6131c7249b7241d0b4b429",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  }
+}
