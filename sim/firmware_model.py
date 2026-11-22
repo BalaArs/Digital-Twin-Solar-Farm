@@ -121,4 +121,5 @@ class FirmwareModel:
             f'"Status_PanelC":"{self.status_c}"'
             "}"
         )
-        return HttpResponse(200, "application/json", body, {})
+        # server.sendHeader("Access-Control-Allow-Origin", "*") before server.send()
+        return HttpResponse(200, "application/json", body, {"Access-Control-Allow-Origin": "*"})

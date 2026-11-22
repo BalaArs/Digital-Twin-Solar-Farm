@@ -115,6 +115,8 @@ void handleAPI(){
   json += "\"Status_PanelC\":\"" + statusC + "\"";
   json += "}";
 
+  // Allow browser dashboards opened from file:// or another origin (index.html) to read /api.
+  server.sendHeader("Access-Control-Allow-Origin", "*");
   server.send(200,"application/json",json);
 }
 

@@ -100,10 +100,6 @@ def test_fil_threshold_boundaries(fil, a, b, c, ab_led, c_led):
 
 
 @pytest.mark.covers("FEAT-API", "FEAT-WEBUI")
-@pytest.mark.xfail(
-    reason="F1: firmware sends no Access-Control-Allow-Origin header; browsers block index.html",
-    strict=True,
-)
 def test_fil_api_sends_cors_header(fil):
     fil.tick(2000, raws(2800, 2800, 2800, 2200))
     assert (
