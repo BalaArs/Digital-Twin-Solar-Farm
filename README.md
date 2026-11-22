@@ -506,14 +506,18 @@ Each README feature maps to automated tests. A defect found in the system is rec
 
 ### 2. Configure Credentials
 
-Update these constants in `Solar_Farm.ino`:
+Credentials are kept out of the sketch. Copy the template and fill in your values:
+
+```bash
+cp secrets.example.h secrets.h   # secrets.h is gitignored, never commit it
+```
 
 ```cpp
+#define WIFI_SSID "Your_WiFi_SSID"
+#define WIFI_PASS "Your_WiFi_Password"
 #define BLYNK_TEMPLATE_ID   "Your_Template_ID"
-#define BLYNK_AUTH_TOKEN     "Your_Auth_Token"
-
-char ssid[] = "Your_WiFi_SSID";
-char pass[] = "Your_WiFi_Password";
+#define BLYNK_TEMPLATE_NAME "Solar Farm"
+#define BLYNK_AUTH_TOKEN    "Your_Auth_Token"
 ```
 
 ### 3. Set Up Blynk Dashboard
@@ -540,6 +544,7 @@ char pass[] = "Your_WiFi_Password";
 ```
 Digital-Twin-Solar-Farm/
 ├── Solar_Farm.ino              # ESP32 firmware (sensor processing, Blynk, REST API)
+├── secrets.example.h           # Credential template (copy to gitignored secrets.h)
 ├── index.html                  # Local glassmorphic web dashboard
 ├── Untitled3.ipynb             # Jupyter ML notebook (Linear Regression, efficiency)
 ├── performance.log             # System performance benchmarks & metrics
