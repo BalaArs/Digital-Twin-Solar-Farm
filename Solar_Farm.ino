@@ -4,17 +4,18 @@
  * LED: AB combined, C only
  ***************************************************/
 
-#define BLYNK_TEMPLATE_ID ""
-#define BLYNK_TEMPLATE_NAME "Solar Farm"
-#define BLYNK_AUTH_TOKEN ""
+// Credentials live in secrets.h (gitignored). Copy secrets.example.h to secrets.h
+// next to this sketch and fill in your own values. It must define BLYNK_TEMPLATE_ID,
+// BLYNK_TEMPLATE_NAME and BLYNK_AUTH_TOKEN before BlynkSimpleEsp32.h is included.
+#include "secrets.h"
 
 #include <WiFi.h>
 #include <WebServer.h>
 #include <BlynkSimpleEsp32.h>
 
 // Wi-Fi
-char ssid[] = "Vishnu's24";
-char pass[] = "223334444";
+char ssid[] = WIFI_SSID;
+char pass[] = WIFI_PASS;
 
 // Pins
 #define VOLTAGE_A 34
