@@ -16,6 +16,7 @@ graphify-out/.graphify_build_state.json
 
 # Secrets (firmware credentials, Blynk tokens)
 secrets.h
+!sim/fil/include/secrets.h
 .env
 .env.*
 graphify-out/.graphify_labels.json.sig
