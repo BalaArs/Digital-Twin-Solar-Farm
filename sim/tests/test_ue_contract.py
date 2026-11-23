@@ -12,7 +12,7 @@ from sim.ue_poller import COLOUR, frame_from_body, poll
 def test_ue_poller_consistent_at_polling_cycles(emulator, interval_s):
     # speed=10: 1/2/5 s UE polling cycles of sim time in 0.1/0.2/0.5 s of wall time
     srv = emulator("cloudy_day", speed=10.0)
-    while not srv.engine.history:  # steady state; cold start is covered by the F2 tests
+    while not srv.engine.history:  # wait for the first tick so the poll window is steady state
         time.sleep(0.01)
     frames = poll(srv.url, interval_s=interval_s / 10, count=6)
     assert all(f.ok for f in frames), [f.errors for f in frames]

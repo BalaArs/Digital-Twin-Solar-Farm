@@ -49,6 +49,14 @@ float readCurrent(int pin) {
   return current;
 }
 
+// ---------------- Classification ----------------
+// Same thresholds as the LEDs: <= 1.0 V RED, < 5.0 V YELLOW, otherwise GREEN.
+String classifyVoltage(float v) {
+  if(v <= 1.0) return "RED: No Voltage";
+  if(v < 5.0) return "YELLOW: Low Voltage";
+  return "GREEN: Normal";
+}
+
 // ---------------- LED Control ----------------
 String statusAB, statusC;
 
@@ -106,13 +114,19 @@ void handleAPI(){
   float voltageC = readVoltage(VOLTAGE_C);
   float currentD = readCurrent(CURRENT_D);
 
+  // Classify the readings returned in this response, not the last timer tick's
+  // (otherwise status is empty before the first tick and up to 2 s stale).
+  float combinedAB = (voltageA + voltageB) / 2.0;
+  String apiStatusAB = classifyVoltage(combinedAB);
+  String apiStatusC = classifyVoltage(voltageC);
+
   String json = "{";
   json += "\"PanelA_Voltage\":" + String(voltageA,2) + ",";
   json += "\"PanelB_Voltage\":" + String(voltageB,2) + ",";
   json += "\"PanelC_Voltage\":" + String(voltageC,2) + ",";
   json += "\"PanelD_Current\":" + String(currentD,2) + ",";
-  json += "\"Status_PanelAB\":\"" + statusAB + "\",";
-  json += "\"Status_PanelC\":\"" + statusC + "\"";
+  json += "\"Status_PanelAB\":\"" + apiStatusAB + "\",";
+  json += "\"Status_PanelC\":\"" + apiStatusC + "\"";
   json += "}";
 
   // Allow browser dashboards opened from file:// or another origin (index.html) to read /api.

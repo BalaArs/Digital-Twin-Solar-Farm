@@ -109,15 +109,11 @@ def test_fil_api_sends_cors_header(fil):
 
 
 @pytest.mark.covers("FEAT-API", "FEAT-UE")
-@pytest.mark.xfail(
-    reason="F2: /api returns empty status strings before the first sendData()", strict=True
-)
 def test_fil_cold_start_status(fil):
     assert check_v1_body(fil.api(100, raws(2800, 2800, 2800, 2200)).body) == []
 
 
 @pytest.mark.covers("FEAT-API", "FEAT-CLS")
-@pytest.mark.xfail(reason="F2: /api status lags its voltages by up to one 2 s tick", strict=True)
 def test_fil_status_consistent_with_voltages(fil):
     fil.tick(2000, raws(2800, 2800, 2800, 2200))  # GREEN
     d = json.loads(fil.api(2100, raws(100, 100, 100, 2048)).body)  # panels just went dark
