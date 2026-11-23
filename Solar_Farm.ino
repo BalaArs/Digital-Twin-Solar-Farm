@@ -66,9 +66,15 @@ String classifyVoltage(float v) {
 // ---------------- LED Control ----------------
 String statusAB, statusC;
 
+// AB group health = its weakest panel, so one failing panel (e.g. a dead B next to a
+// healthy A) raises the alarm instead of being averaged away.
+float groupAB(float voltageA, float voltageB) {
+  return (voltageA < voltageB) ? voltageA : voltageB;
+}
+
 void updateLEDs(float voltageA, float voltageB, float voltageC) {
-  // AB Combined
-  float combinedAB = (voltageA + voltageB) / 2.0;
+  // AB group: weakest of A and B
+  float combinedAB = groupAB(voltageA, voltageB);
   if(combinedAB <= 1.0){
     digitalWrite(RED_AB,HIGH); digitalWrite(YELLOW_AB,LOW); digitalWrite(GREEN_AB,LOW);
     statusAB = "RED: No Voltage";
@@ -122,8 +128,7 @@ void handleAPI(){
 
   // Classify the readings returned in this response, not the last timer tick's
   // (otherwise status is empty before the first tick and up to 2 s stale).
-  float combinedAB = (voltageA + voltageB) / 2.0;
-  String apiStatusAB = classifyVoltage(combinedAB);
+  String apiStatusAB = classifyVoltage(groupAB(voltageA, voltageB));
   String apiStatusC = classifyVoltage(voltageC);
 
   String json = "{";
@@ -132,7 +137,10 @@ void handleAPI(){
   json += "\"PanelC_Voltage\":" + String(voltageC,2) + ",";
   json += "\"PanelD_Current\":" + String(currentD,2) + ",";
   json += "\"Status_PanelAB\":\"" + apiStatusAB + "\",";
-  json += "\"Status_PanelC\":\"" + apiStatusC + "\"";
+  json += "\"Status_PanelC\":\"" + apiStatusC + "\",";
+  // Per-panel detail (appended, so existing consumers keep working)
+  json += "\"Status_PanelA\":\"" + classifyVoltage(voltageA) + "\",";
+  json += "\"Status_PanelB\":\"" + classifyVoltage(voltageB) + "\"";
   json += "}";
 
   // Allow browser dashboards opened from file:// or another origin (index.html) to read /api.

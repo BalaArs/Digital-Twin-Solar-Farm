@@ -77,9 +77,9 @@ def test_control_endpoint_mutates_live_scenario():
     c, e = client()
     c.post("/control", json={"add_fault": {"kind": "disconnect", "target": "B"}})
     e.step()
-    assert (
-        c.get("/api").json()["Status_PanelAB"] == "YELLOW: Low Voltage"
-    )  # F3: dead B only -> YELLOW
+    d = c.get("/api").json()
+    assert d["Status_PanelAB"] == "RED: No Voltage"  # F3: weakest panel drives the AB group
+    assert (d["Status_PanelA"], d["Status_PanelB"]) == ("GREEN: Normal", "RED: No Voltage")
     c.post("/control", json={"irradiance_override": 0, "faults": []})
     e.step()
     d = c.get("/api").json()

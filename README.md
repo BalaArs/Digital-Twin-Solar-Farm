@@ -118,14 +118,14 @@ flowchart TD
 | 7 | **Voltage Sensor C** | Resistive voltage divider (0–10 V input) | `GPIO 32` — ADC1_CH4 | Scales panel voltage to 0–3.3 V for ADC. |
 | 8 | **Current Sensor D** | ACS712-05B (5 A, 185 mV/A, 2.5 V offset) | `GPIO 33` — ADC1_CH5 | Measures DC current via Hall effect. |
 | 9 | **ESP32** | Espressif Dual-Core Xtensa LX6, 240 MHz, 520 KB SRAM, 4 MB Flash | SoC | Edge processing, Wi-Fi, web server, Blynk client. |
-| 10 | **LED Group AB** | 3 × 5 mm LEDs (Red, Yellow, Green) | `R:14` `Y:12` `G:13` | Physical status for Panels A + B combined. |
+| 10 | **LED Group AB** | 3 × 5 mm LEDs (Red, Yellow, Green) | `R:14` `Y:12` `G:13` | Physical status for the A + B group (its weakest panel). |
 | 11 | **LED Group CD** | 3 × 5 mm LEDs (Red, Yellow, Green) | `R:25` `Y:26` `G:27` | Physical status for Panel C (and D context). |
 
 **Panel Wiring Configuration:**
 
 | Group | Panels | Connection | Purpose |
 | :---: | :---: | :--- | :--- |
-| AB | A + B | **Parallel** | Combined voltage monitoring — average of two panels. |
+| AB | A + B | **Parallel** | Group monitoring: the group status follows its weakest panel, so one failing panel raises the alarm. |
 | CD | C + D | **Series** | Current measurement and flow control. |
 
 ---
@@ -190,9 +190,11 @@ flowchart LR
 
 | State | Condition | LED Color | Status String |
 | :---: | :--- | :---: | :--- |
-| 🔴 Critical | Avg voltage ≤ 1.0 V | **Red** | `RED: No Voltage` |
+| 🔴 Critical | Voltage ≤ 1.0 V | **Red** | `RED: No Voltage` |
 | 🟡 Warning | 1.0 V < voltage < 5.0 V | **Yellow** | `YELLOW: Low Voltage` |
 | 🟢 Normal | Voltage ≥ 5.0 V | **Green** | `GREEN: Normal` |
+
+The thresholds apply per panel. Group AB (LEDs 14/12/13, Blynk V4, `Status_PanelAB`) uses the **lower of A and B**, so a single dead or shaded panel is never averaged away. Group CD follows panel C.
 
 **Communication Channels:**
 
@@ -211,9 +213,13 @@ flowchart LR
   "PanelC_Voltage": 6.78,
   "PanelD_Current": 1.25,
   "Status_PanelAB": "GREEN: Normal",
-  "Status_PanelC": "GREEN: Normal"
+  "Status_PanelC": "GREEN: Normal",
+  "Status_PanelA": "GREEN: Normal",
+  "Status_PanelB": "GREEN: Normal"
 }
 ```
+
+`Status_PanelA` / `Status_PanelB` (per-panel detail) are appended after the original six keys, so existing consumers keep working unchanged.
 
 #### Tier 2 — Local Web Dashboard (`index.html`)
 
@@ -447,7 +453,7 @@ Each README feature maps to automated tests. A defect found in the system is rec
 |---|---|---|
 | F1 | Firmware sends no CORS header, so the browser blocks the local web UI's `fetch` | ✅ Fixed (#3) |
 | F2 | `/api` status strings are empty before the first tick and up to 2 s stale | ✅ Fixed (#4) |
-| F3 | Panel B is never classified on its own (a dead B can show only YELLOW) | Open: contract decision |
+| F3 | Panel B is never classified on its own (a dead B can show only YELLOW) | ✅ AB group follows its weakest panel; per-panel `Status_PanelA/B` added |
 | F4 | Current formula assumes a 0–5 V ADC; ESP32 reads 0–3.3 V | Open: confirm ACS712 wiring |
 | F5 | `setup()` hangs forever without Wi-Fi | ✅ Fixed (#5) |
 | F6 | Wi-Fi credentials committed in the sketch | ✅ Moved to gitignored `secrets.h` (#2) |

@@ -39,9 +39,17 @@ def frame_from_body(body: str, wall: float) -> TwinFrame:
         "C": f"{d['PanelC_Voltage']:.2f} V",
         "D": f"{d['PanelD_Current']:.2f} A",
     }
-    ab = COLOUR[d["Status_PanelAB"].split(":")[0]]
-    c = COLOUR[d["Status_PanelC"].split(":")[0]]
-    return TwinFrame(wall, True, [], hud, {"A": ab, "B": ab, "C": c, "D": c}, body)
+
+    def colour(key: str, fallback: str) -> tuple[float, float, float]:
+        return COLOUR[d.get(key, d[fallback]).split(":")[0]]
+
+    material = {
+        "A": colour("Status_PanelA", "Status_PanelAB"),  # per-panel when the firmware sends it
+        "B": colour("Status_PanelB", "Status_PanelAB"),
+        "C": colour("Status_PanelC", "Status_PanelC"),
+        "D": colour("Status_PanelC", "Status_PanelC"),
+    }
+    return TwinFrame(wall, True, [], hud, material, body)
 
 
 def poll(

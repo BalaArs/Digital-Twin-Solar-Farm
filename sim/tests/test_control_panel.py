@@ -37,8 +37,12 @@ def test_control_panel_drives_emulator(page: Page, emulator):
 
     page.locator("#dcB").check()
     page.locator("#applyFaults").click()
-    wait_api(page, srv, lambda d: d["Status_PanelAB"].startswith("YELLOW"))
-    expect(page.locator("#l12")).to_have_class("led y on", timeout=ONE_TICK)
+    wait_api(
+        page,
+        srv,
+        lambda d: d["Status_PanelAB"].startswith("RED") and d["Status_PanelB"].startswith("RED"),
+    )
+    expect(page.locator("#l14")).to_have_class("led r on", timeout=ONE_TICK)
 
     page.locator("#irr").fill("0")
     page.locator("#ovOn").check()

@@ -87,8 +87,7 @@ class FirmwareModel:
         return ev
 
     def update_leds(self, va: float, vb: float, vc: float) -> dict[int, int]:
-        combined_ab = float(f32(float(f32(f32(va) + f32(vb))) / 2.0))
-        self.status_ab = classify(combined_ab)
+        self.status_ab = classify(min(va, vb))  # groupAB(): weakest panel
         self.status_c = classify(vc)
         leds = led_levels(self.status_ab, RED_AB, YELLOW_AB, GREEN_AB)
         leds.update(led_levels(self.status_c, RED_CD, YELLOW_CD, GREEN_CD))
@@ -111,7 +110,7 @@ class FirmwareModel:
         """handleAPI(): re-reads the ADC and classifies those readings (not the last tick's)."""
         va, vb, vc = read_voltage(raws[PIN_A]), read_voltage(raws[PIN_B]), read_voltage(raws[PIN_C])
         cd = read_current(raws[PIN_D])
-        status_ab = classify(float(f32(float(f32(f32(va) + f32(vb))) / 2.0)))
+        status_ab = classify(min(va, vb))
         status_c = classify(vc)
         body = (
             "{"
@@ -120,7 +119,9 @@ class FirmwareModel:
             f'"PanelC_Voltage":{fmt2(vc)},'
             f'"PanelD_Current":{fmt2(cd)},'
             f'"Status_PanelAB":"{status_ab}",'
-            f'"Status_PanelC":"{status_c}"'
+            f'"Status_PanelC":"{status_c}",'
+            f'"Status_PanelA":"{classify(va)}",'
+            f'"Status_PanelB":"{classify(vb)}"'
             "}"
         )
         # server.sendHeader("Access-Control-Allow-Origin", "*") before server.send()

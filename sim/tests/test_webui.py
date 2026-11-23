@@ -48,8 +48,11 @@ def test_ui_yellow_then_red_as_panels_fail(page: Page, emulator):
     srv = emulator("lab_bench", cors=True)
     connect(page, srv)
     expect(page.locator("#ledAB")).to_have_text("GREEN", timeout=WITHIN)
-    control(srv, faults=[{"kind": "disconnect", "target": "B"}])
+    control(srv, faults=[{"kind": "shading", "target": "B", "value": 0.99}])  # B ~4.4 V
     expect(page.locator("#ledAB")).to_have_text("YELLOW", timeout=WITHIN + POLL)
+    control(srv, faults=[{"kind": "disconnect", "target": "B"}])  # weakest panel -> RED (F3)
+    expect(page.locator("#ledAB")).to_have_text("RED", timeout=WITHIN + POLL)
+    expect(page.locator("#ledC")).to_have_text("GREEN")
     control(srv, faults=[{"kind": "disconnect", "target": t} for t in "ABC"])
     expect(page.locator("#ledAB")).to_have_text("RED", timeout=WITHIN + POLL)
     expect(page.locator("#ledC")).to_have_text("RED", timeout=WITHIN + POLL)

@@ -19,7 +19,6 @@ def test_ue_poller_consistent_at_polling_cycles(emulator, interval_s):
     for f in frames:
         assert set(f.hud) == set(f.material) == {"A", "B", "C", "D"}
         assert all(c in COLOUR.values() for c in f.material.values())
-        assert f.material["A"] == f.material["B"]  # AB share one LED group / material
 
 
 @pytest.mark.covers("FEAT-UE")
@@ -40,3 +39,7 @@ def test_ue_frame_rejects_contract_violations():
     )
     f = frame_from_body(good, 0)
     assert f.ok and f.hud["C"] == "4.76 V" and f.material["C"] == COLOUR["YELLOW"]
+    assert f.material["A"] == f.material["B"] == COLOUR["GREEN"]  # legacy body: AB fallback
+    per_panel = good[:-1] + ',"Status_PanelA":"GREEN: Normal","Status_PanelB":"RED: No Voltage"}'
+    f = frame_from_body(per_panel, 0)
+    assert f.ok and f.material["A"] == COLOUR["GREEN"] and f.material["B"] == COLOUR["RED"]

@@ -85,9 +85,9 @@ def test_fil_differential_10000_random_vectors(fil):
         (410, 410, 410, "Y", "Y"),  # 1.0012 V -> YELLOW
         (2047, 2047, 2047, "Y", "Y"),  # 4.9988 V -> YELLOW
         (2048, 2048, 2048, "G", "G"),  # 5.0012 V -> GREEN
-        (4095, 0, 4095, "G", "G"),  # AB average exactly 5.00 V -> GREEN
-        (4093, 1, 0, "Y", "R"),  # AB average 4.9988 V -> YELLOW
-        (819, 0, 2048, "R", "G"),  # AB average 1.00 V -> RED (<= 1.0)
+        (4095, 2048, 4095, "G", "G"),  # AB = weakest panel (B, 5.0012 V) -> GREEN
+        (4095, 2047, 0, "Y", "R"),  # B 4.9988 V drags AB to YELLOW
+        (2048, 409, 2048, "R", "G"),  # B dead -> AB RED although A is healthy (F3)
     ],
 )  # fmt: skip
 def test_fil_threshold_boundaries(fil, a, b, c, ab_led, c_led):
@@ -136,11 +136,8 @@ def test_fil_boots_without_wifi(fil_exe):
 
 
 @pytest.mark.covers("FEAT-CLS")
-@pytest.mark.xfail(
-    reason="F3: panel B is never classified on its own; a dead B with healthy A shows YELLOW",
-    strict=True,
-)
 def test_fil_dead_panel_b_is_flagged(fil):
     fil.tick(2000, raws(2800, 0, 2800, 2200))
     d = json.loads(fil.api(2500, raws(2800, 0, 2800, 2200)).body)
     assert d["Status_PanelAB"].startswith("RED")
+    assert d["Status_PanelA"] == "GREEN: Normal" and d["Status_PanelB"] == "RED: No Voltage"
