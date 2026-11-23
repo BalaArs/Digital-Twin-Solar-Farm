@@ -25,26 +25,17 @@ def data_dir(tmp_path_factory):
 
 
 @pytest.mark.covers("FEAT-ML")
-@pytest.mark.xfail(
-    reason="F7: notebook loads the generation CSV as weather_data (weather file never read)",
-    strict=True,
-)
 def test_notebook_reads_weather_csv():
     assert WEATHER_FILE in code(nbformat.read(NOTEBOOK, as_version=4))
 
 
 @pytest.mark.covers("FEAT-ML")
-@pytest.mark.xfail(reason="F8: r2_score(y_pred, y_test) has its arguments reversed", strict=True)
 def test_notebook_r2_argument_order():
     src = code(nbformat.read(NOTEBOOK, as_version=4))
     assert "r2_score(y_pred" not in src and re.search(r"r2_score\(\s*y_test", src)
 
 
 @pytest.mark.covers("FEAT-ML", "HARN-DATA")
-@pytest.mark.xfail(
-    reason="F7/F8: notebook cannot run end to end (DATE/TIME never derived, Drive paths hard-coded, weather CSV not loaded)",
-    strict=True,
-)
 def test_notebook_runs_and_recovers_inverter_efficiency(data_dir, tmp_path):
     d, truth = data_dir
     nb = nbformat.read(NOTEBOOK, as_version=4)
@@ -64,5 +55,6 @@ def test_notebook_runs_and_recovers_inverter_efficiency(data_dir, tmp_path):
     )
     eff = float(re.search(r"Efficiency\) of Solar Power Plant:\s+([\d.]+) %", text).group(1))
     assert eff == pytest.approx(truth["inverter_efficiency"] * 100, abs=1.0)
+    # F10: unscaled ~1e9 TOTAL_YIELD features made LinearRegression collapse (R2 ~ 0)
     r2 = float(re.search(r"R2 Score :\s+(-?[\d.]+) %", text).group(1))
     assert r2 > 95

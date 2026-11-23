@@ -233,9 +233,9 @@ flowchart LR
 
 #### Tier 4 — ML Analytics (`Untitled3.ipynb`)
 
-- **Data Sources:** `Plant_2_Generation_Data.csv` (historical solar generation records).
+- **Data Sources:** `Plant_2_Generation_Data.csv` and `Plant_2_Weather_Sensor_Data.csv`, read from `$SOLAR_DATA_DIR` (default: the Google Drive folder). `python -m sim generate kaggle` produces compatible synthetic data.
 - **Pipeline:** Pandas data processing → Seaborn/Matplotlib visualization → Scikit-Learn modeling.
-- **Models:** Linear Regression forecasting `AC_POWER` from multi-variate DC features (`DC_POWER`, `DAILY_YIELD`, `TOTAL_YIELD`).
+- **Models:** Linear Regression (standardised features) forecasting `AC_POWER` from DC and weather features (`DC_POWER`, `DAILY_YIELD`, `TOTAL_YIELD`, `IRRADIATION`, `MODULE_TEMPERATURE`, `AMBIENT_TEMPERATURE`).
 - **Metrics:** R² score, output power vs. efficiency curves.
 
 ---
@@ -453,6 +453,7 @@ Each README feature maps to automated tests. A defect found in the system is rec
 | F6 | Wi-Fi credentials committed in the sketch | Moved to gitignored `secrets.h` |
 | F7/F8 | Notebook loads the generation CSV as weather data; `r2_score` args reversed; Drive-only paths | Notebook fix PR |
 | F9 | Web UI `fetch` has no timeout (a hung device never shows Disconnected) | Web UI fix PR |
+| F10 | Notebook regression on unscaled ~1e9 `TOTAL_YIELD` features is ill-conditioned (R² ≈ 0) | Notebook fix PR |
 
 ---
 
