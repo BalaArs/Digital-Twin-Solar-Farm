@@ -34,6 +34,12 @@ char pass[] = WIFI_PASS;
 BlynkTimer timer;
 WebServer server(80);
 
+// Connectivity (F5): never block boot on Wi-Fi or Blynk.
+#define WIFI_CONNECT_TIMEOUT_MS 15000UL
+#define WIFI_RETRY_INTERVAL_MS  10000UL
+#define BLYNK_CONNECT_TIMEOUT_MS 5000UL
+unsigned long lastWifiRetry = 0;
+
 // ---------------- Voltage & Current Reading ----------------
 float readVoltage(int pin) {
   int raw = analogRead(pin);
@@ -141,12 +147,20 @@ void setup() {
   pinMode(RED_AB,OUTPUT); pinMode(YELLOW_AB,OUTPUT); pinMode(GREEN_AB,OUTPUT);
   pinMode(RED_CD,OUTPUT); pinMode(YELLOW_CD,OUTPUT); pinMode(GREEN_CD,OUTPUT);
 
+  // Bounded Wi-Fi wait: boot even when the network is down so the LEDs, Serial log
+  // and (once Wi-Fi returns) /api keep working. Blynk.begin() would block forever.
   WiFi.begin(ssid,pass);
   Serial.print("Connecting WiFi");
-  while(WiFi.status()!=WL_CONNECTED){delay(500); Serial.print(".");}
-  Serial.println("\nWi-Fi Connected! IP: "); Serial.println(WiFi.localIP());
+  unsigned long wifiStart = millis();
+  while(WiFi.status()!=WL_CONNECTED && millis() - wifiStart < WIFI_CONNECT_TIMEOUT_MS){delay(500); Serial.print(".");}
+  if(WiFi.status()==WL_CONNECTED){
+    Serial.println("\nWi-Fi Connected! IP: "); Serial.println(WiFi.localIP());
+  } else {
+    Serial.println("\nWi-Fi unavailable - running offline, will keep retrying");
+  }
 
-  Blynk.begin(BLYNK_AUTH_TOKEN,ssid,pass);
+  Blynk.config(BLYNK_AUTH_TOKEN);
+  if(WiFi.status()==WL_CONNECTED) Blynk.connect(BLYNK_CONNECT_TIMEOUT_MS);
 
   server.on("/api",handleAPI);
   server.begin();
@@ -157,7 +171,11 @@ void setup() {
 
 // ---------------- Loop ----------------
 void loop(){
-  Blynk.run();
+  if(WiFi.status()!=WL_CONNECTED && millis() - lastWifiRetry >= WIFI_RETRY_INTERVAL_MS){
+    lastWifiRetry = millis();
+    WiFi.reconnect();
+  }
+  if(WiFi.status()==WL_CONNECTED) Blynk.run();  // Blynk.run() reconnects to the cloud itself
   timer.run();
   server.handleClient();
 }
