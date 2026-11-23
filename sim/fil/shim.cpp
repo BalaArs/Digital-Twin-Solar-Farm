@@ -13,6 +13,7 @@ BlynkWifi Blynk;
 
 namespace {
 std::map<int, int> g_adc;
+std::map<int, int> g_mv;
 unsigned long g_millis = 0;
 bool g_wifi = true;
 std::string g_serial;  // partial Serial line
@@ -27,6 +28,7 @@ void emit(const char* fmt, ...) {
   va_end(ap);
 }
 void set_adc(int pin, int raw) { g_adc[pin] = raw; }
+void set_mv(int pin, int mv) { g_mv[pin] = mv; }
 void set_millis(unsigned long ms) { g_millis = ms; }
 void set_wifi(bool up) { g_wifi = up; }
 bool wifi_up() { return g_wifi; }
@@ -64,6 +66,11 @@ void digitalWrite(int pin, int level) { fil::emit("LED\t%d\t%d\n", pin, level ? 
 int analogRead(int pin) {
   auto it = g_adc.find(pin);
   return it == g_adc.end() ? 0 : it->second;
+}
+uint32_t analogReadMilliVolts(uint8_t pin) {
+  auto it = g_mv.find(pin);
+  if (it != g_mv.end()) return (uint32_t)it->second;
+  return (uint32_t)((analogRead(pin) * 3300 + 2047) / 4095);  // linear fallback
 }
 void delay(unsigned long ms) { g_millis += ms; }
 unsigned long millis() { return g_millis; }

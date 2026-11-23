@@ -90,8 +90,9 @@ def cmd_replay(a: argparse.Namespace) -> None:
         t = (time.monotonic() - t0) * 1000 * a.speed
         idx = min(range(len(rows)), key=lambda i: abs(rows[i]["t_ms"] - rows[0]["t_ms"] - t))
         raws = {int(k): v for k, v in rows[idx]["raws"].items()}
-        model.tick(rows[idx]["t_ms"], raws)
-        r = model.api(rows[idx]["t_ms"], raws)
+        mvs = {int(k): v for k, v in rows[idx].get("mvs", {}).items()} or None
+        model.tick(rows[idx]["t_ms"], raws, mvs)
+        r = model.api(rows[idx]["t_ms"], raws, mvs)
         return JSONResponse(json.loads(r.body), headers={"Access-Control-Allow-Origin": "*"})
 
     uvicorn.run(app, host=a.host, port=a.port, log_level="warning")

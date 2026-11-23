@@ -102,8 +102,8 @@ class Scenario(BaseModel):
     weather: Weather = Weather()
     faults: list[Fault] = []
     network: Network = Network()
-    adc_model: Literal["ideal", "esp32"] = "ideal"  # ideal = firmware's assumed transfer
-    acs_divider: bool = True  # esp32 model only: ACS712 output divided 5V->3.3V before GPIO33
+    adc_model: Literal["ideal", "esp32"] = "ideal"  # ideal = linear 0-3.3 V; esp32 = real ADC
+    acs_divider: bool = True  # 2:3 divider ACS712 -> GPIO33 (required wiring since F4)
     adc_noise_lsb: float = 0.0
     load_ohm: float = 8.0  # resistive load on the C+D series string
     blynk_token: str = "sim-token"

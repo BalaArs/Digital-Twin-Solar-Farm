@@ -16,9 +16,9 @@ Architecture: [`SIMULATION_HARNESS.md`](./SIMULATION_HARNESS.md)
 | 5. Dataset generator | ✅ Done | `sim/datasets.py` |
 | 6. Verification suite | ✅ Done | `sim/tests/`, `reports/coverage.md` |
 | 7. Control panel | ✅ Done | `sim/static/control.html` at `/control` |
-| 8. SUT fix PRs | ✅ Merged (#2–#7, 2026-11-23) | F1, F2, F5, F6 (firmware), F7+F8+F10 (notebook), F9 (web UI); F3 and F4 await decisions |
+| 8. SUT fix PRs | ✅ Merged (#2–#7, 2026-11-23) | F1, F2, F5, F6 (firmware), F7+F8+F10 (notebook), F9 (web UI); F3 (#9) and F4 (#10) decided and fixed: AB = weakest panel + per-panel status; 2:3 ACS712 divider + calibrated mV |
 | 9. Claude tooling | ✅ Done | `.claude/skills/` (run-scenario, add-fault, sut-fix-pr), `.claude/agents/test-runner.md`, `.mcp.json` (Playwright MCP) |
-| Later | ⏳ | F3 contract decision, F4 wiring confirmation, real Blynk adapter, UE project, hardware-in-the-loop comparison |
+| Later | ⏳ | Confirm the 2:3 divider on the rig and trim `ACS_ZERO_MV`, real Blynk adapter, UE project, hardware-in-the-loop comparison |
 
 Defaults taken for the open questions in §8: PRs go to the fork; both ACS712 wirings are modelled; `/api/v2` is emulator-only; Kaggle Plant_2 location (17.4 N, 78.5 E, IST); GitHub Actions CI.
 

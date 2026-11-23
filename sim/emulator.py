@@ -95,6 +95,7 @@ def create_app(engine: Engine) -> FastAPI:
             "backend": engine.backend_kind,
             "truth": engine.truth(t),
             "raws": engine.raws(t),
+            "mvs": engine.adc(t).mv,
             "leds": engine.leds,
             "serial": list(engine.serial)[-20:],
             "blynk": engine.blynk.datastreams(),
@@ -140,7 +141,14 @@ def create_app(engine: Engine) -> FastAPI:
     def recording() -> Response:
         lines = [
             json.dumps(
-                {"t_ms": r.t_ms, "truth": r.truth, "raws": r.raws, "leds": r.leds, "blynk": r.blynk}
+                {
+                    "t_ms": r.t_ms,
+                    "truth": r.truth,
+                    "raws": r.raws,
+                    "mvs": r.mvs,
+                    "leds": r.leds,
+                    "blynk": r.blynk,
+                }
             )
             for r in list(engine.history)
         ]

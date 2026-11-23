@@ -82,9 +82,9 @@ The engine is **lazy and deterministic**. It fires due timer ticks before servin
 |---|---|
 | `sim/config.py` | Pydantic schema for scenarios (`Scenario`, `Weather`, `Fault`, `Network`, `Farm`); YAML load/dump. |
 | `sim/physics.py` | Clear-sky irradiance (pvlib), seeded cloud index, ambient and module temperature, per-panel Voc/Isc, series-string current, fault effects. |
-| `sim/adc.py` | Physical → raw ADC codes. `ideal` is the exact inverse of the firmware's calibration. `esp32` models the 3.3 V full scale with a dead zone, a mid-scale bow and saturation, plus the optional ACS712 divider. |
+| `sim/adc.py` | Physical → ADC readings per pin: raw `analogRead()` codes **and** calibrated `analogReadMilliVolts()` values (the firmware uses mV since F4). `ideal` is a linear 0–3.3 V converter. `esp32` models the raw dead zone, mid-scale bow and saturation, with calibrated mV capped near 3.1 V. The 2:3 ACS712 divider can be removed (`acs_divider: false`) to show the unsupported wiring. |
 | `sim/firmware_model.py` | Python port of `Solar_Farm.ino` that reproduces its float32 arithmetic and `String(float,2)` formatting. |
-| `sim/fil/` | Host build of the **unmodified** sketch against a minimal C++ shim. Line protocol: `ADC`, `TIME`, `WIFI`, `SETUP`, `LOOP`, `GET` → `LED`/`BLYNK`/`SERIAL`/`HTTP` events. Builds are cached by content hash in `build/fil/`. |
+| `sim/fil/` | Host build of the **unmodified** sketch against a minimal C++ shim. Line protocol: `ADC`, `MV`, `TIME`, `WIFI`, `SETUP`, `LOOP`, `GET` → `LED`/`BLYNK`/`SERIAL`/`HTTP` events. Builds are cached by content hash in `build/fil/`. |
 | `sim/engine.py` | Clock (real-time or manual), lazy tick scheduling, tick history, LED/serial state, jitter measurement, `/api/v2` farm view. |
 | `sim/emulator.py` | FastAPI app: `/api`, `/api/v2`, `/state`, `/control`, `/serial`, `/recording`, mock Blynk routes, network-fault middleware. Also `ServerThread` for tests. |
 | `sim/blynk_mock.py` | Records `virtualWrite` calls with simulated and wall time. |
@@ -144,7 +144,7 @@ Each fault applies inside the window `[start_s, end_s)` and can be added or clea
 | F1 | Firmware ↔ web UI | No `Access-Control-Allow-Origin` header, so browsers block `index.html`'s fetch. | ✅ Fixed (#3) |
 | F2 | Firmware | `/api` status strings come from the last tick: empty before the first tick, and up to 2 s stale. | ✅ Fixed (#4) |
 | F3 | Firmware | Panel B is never classified on its own; a dead B with a healthy A shows YELLOW. | ✅ Fixed: AB group = weakest panel; additive `Status_PanelA/B` fields (v1 schema keeps them optional) |
-| F4 | Firmware / HW | The current formula assumes a 0–5 V ADC, but the ESP32 reads 0–3.3 V. | Open: needs ACS712 wiring confirmation |
+| F4 | Firmware / HW | The current formula assumes a 0–5 V ADC, but the ESP32 reads 0–3.3 V. | ✅ Fixed: 2:3 ACS712 divider is a documented hardware requirement; all channels use calibrated `analogReadMilliVolts()` |
 | F5 | Firmware | `setup()` busy-waits forever without Wi-Fi. | ✅ Fixed (#5); on-device check pending |
 | F6 | Security | Wi-Fi SSID and password committed in the sketch. | ✅ Fixed (#2); password still in history, so rotate it |
 | F7 | Notebook | The generation CSV is loaded as `weather_data`. | ✅ Fixed (#7) |
@@ -180,7 +180,7 @@ With F1 fixed the firmware (and the reference model) send `Access-Control-Allow-
 ## 7. Assumptions and limits
 
 * **PV model.** The PV model is deliberately simple: a logarithmic low-light Voc and a linear Isc, with the C+D string modelled as a resistive load. It is good enough to exercise thresholds and dynamics, but it is not a bankable yield model.
-* **ESP32 ADC.** The `esp32` transfer curve is an approximation of the 11 dB attenuation behaviour; calibrate it against the real rig once hardware is available.
+* **ESP32 ADC.** The `esp32` raw transfer curve approximates the 11 dB attenuation behaviour. The calibrated-mV model assumes ideal eFuse calibration; real boards keep a residual error of about ±1 %, which mostly shows up as a current zero offset, so trim `ACS_ZERO_MV` on the rig.
 * **Blynk.** Blynk is mocked at the `virtualWrite` boundary and through an HTTP API subset. A real-cloud adapter can use the Blynk HTTPS API once a token exists.
 * **Unreal Engine.** UE is verified at the REST-contract level only; the UE project is not in the repo.
 * **`down` network mode.** `down` returns HTTP 503 instead of refusing the TCP connection; the UI treats both the same way.

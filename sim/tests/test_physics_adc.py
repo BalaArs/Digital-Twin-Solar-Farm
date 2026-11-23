@@ -62,10 +62,13 @@ def test_fault_windows():
 
 @pytest.mark.covers("FEAT-CAL")
 def test_ideal_adc_round_trip_within_quantisation():
+    # analogReadMilliVolts() has 1 mV steps: 3.03 mV per panel volt, 8.1 mA per amp
     for v in np.linspace(0, 9.99, 400):
-        assert abs(read_voltage(round(adc.ideal_voltage_raw(v))) - v) <= 10 / 4095 / 2 + 1e-6
-    for i in np.linspace(0, 5, 200):
-        assert abs(read_current(round(adc.ideal_current_raw(i))) - i) <= 5 / 4095 / 0.185 / 2 + 1e-6
+        mv = round(adc.pin_mv(adc.voltage_pin(v), "ideal"))
+        assert abs(read_voltage(mv) - v) <= 0.5e-3 * 10 / 3.3 + 1e-6
+    for i in np.linspace(0, 4.5, 200):
+        mv = round(adc.pin_mv(adc.current_pin(i), "ideal"))
+        assert abs(read_current(mv) - i) <= 0.5e-3 / adc.ACS_DIVIDER_RATIO / 0.185 + 1e-6
 
 
 @pytest.mark.covers("FEAT-CAL")
@@ -82,12 +85,30 @@ def test_sensor_faults_on_raw_codes():
 
 
 @pytest.mark.covers("FEAT-CAL")
-@pytest.mark.xfail(
-    reason="F4: firmware current formula assumes a 0-5 V ADC; ESP32 ADC is 0-3.3 V. "
-    "Needs ACS712 wiring confirmation before a firmware fix (accepted, not fixed)",
-    strict=True,
-)
-def test_current_reading_accurate_on_physical_esp32_adc():
-    for divider in (True, False):
-        raw = round(adc.esp32_current_raw(1.0, divider))
-        assert read_current(raw) == pytest.approx(1.0, abs=0.1)
+def test_readings_accurate_on_physical_esp32_adc():
+    """F4: calibrated mV + explicit dividers stay accurate on the non-linear ESP32 ADC."""
+    sc = Scenario.load("esp32_adc_physical")
+    for i in np.linspace(0.0, 4.5, 46):
+        truth = {"V_A": 6.0, "V_B": 6.0, "V_C": 6.0, "I_D": float(i)}
+        s = adc.sample(sc, truth, 0)
+        assert read_current(s.mv[adc.PIN_D]) == pytest.approx(i, abs=0.01)
+    for v in np.linspace(0.5, 9.0, 35):
+        truth = {"V_A": float(v), "V_B": 0.0, "V_C": 0.0, "I_D": 0.0}
+        s = adc.sample(sc, truth, 0)
+        assert read_voltage(s.mv[adc.PIN_A]) == pytest.approx(v, abs=0.005)
+
+
+@pytest.mark.covers("FEAT-CAL")
+def test_raw_adc_codes_would_be_inaccurate():
+    """Why F4 switched away from raw analogRead(): the old formula on raw ESP32 codes."""
+    raw = round(adc.esp32_current_raw(1.0))
+    old_formula = ((raw / 4095.0) * 5.0 - 2.5) / 0.185
+    assert abs(old_formula - 1.0) > 0.5
+
+
+@pytest.mark.covers("FEAT-CAL")
+def test_unsupported_wiring_without_acs_divider_saturates():
+    """Without the 2:3 divider GPIO33 is over-driven: readings pin near the 3.1 V ceiling."""
+    sc = Scenario.load("esp32_adc_physical").model_copy(update={"acs_divider": False})
+    s = adc.sample(sc, {"V_A": 6.0, "V_B": 6.0, "V_C": 6.0, "I_D": 4.0}, 0)
+    assert s.mv[adc.PIN_D] == round(adc.ESP32_SAT_V * 1000)

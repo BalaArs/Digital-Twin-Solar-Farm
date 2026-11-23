@@ -1,5 +1,6 @@
 // FIL driver loop: line-oriented command protocol on stdin, events on stdout.
 //   ADC <pin> <raw>   set the value analogRead(pin) returns
+//   MV <pin> <mv>     set the value analogReadMilliVolts(pin) returns
 //   TIME <ms>         set millis()
 //   WIFI <0|1>        Wi-Fi link state seen by WiFi.status()/Blynk
 //   SETUP             call the sketch's setup()
@@ -27,6 +28,10 @@ int main() {
       int pin, raw;
       in >> pin >> raw;
       fil::set_adc(pin, raw);
+    } else if (cmd == "MV") {
+      int pin, mv;
+      in >> pin >> mv;
+      fil::set_mv(pin, mv);
     } else if (cmd == "TIME") {
       unsigned long ms;
       in >> ms;

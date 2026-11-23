@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 
 import pandas as pd
 
-from .adc import to_raw
+from .adc import AdcSample, sample
 from .blynk_mock import BlynkMock
 from .config import Scenario
 from .firmware_model import LED_PINS, FirmwareModel, HttpResponse, classify
@@ -22,6 +22,7 @@ class TickRecord:
     wall: float
     truth: dict
     raws: dict[int, int]
+    mvs: dict[int, int]
     blynk: list
     leds: dict[int, int]
     serial: list[str]
@@ -97,7 +98,10 @@ class Engine:
         return self.env.rig_truth(t_ms / 1000.0)
 
     def raws(self, t_ms: int) -> dict[int, int]:
-        return to_raw(self.sc, self.truth(t_ms), t_ms)
+        return self.adc(t_ms).raw
+
+    def adc(self, t_ms: int) -> AdcSample:
+        return sample(self.sc, self.truth(t_ms), t_ms)
 
     def _absorb(self, ev) -> None:
         self.leds.update(ev.leds)
@@ -105,8 +109,8 @@ class Engine:
 
     def _fire(self, t_ms: int) -> None:
         truth = self.truth(t_ms)
-        raws = to_raw(self.sc, truth, t_ms)
-        ev = self.fw.tick(t_ms, raws)
+        s = sample(self.sc, truth, t_ms)
+        ev = self.fw.tick(t_ms, s.raw, s.mv)
         wall = time.time()
         if self.clock.mode == "realtime":
             self.jitter_ms.append((time.monotonic() - self.clock.wall_of(t_ms)) * 1000)
@@ -114,7 +118,7 @@ class Engine:
             self.blynk.write(pin, val, t_ms, wall)
         self._absorb(ev)
         self.history.append(
-            TickRecord(t_ms, wall, truth, raws, ev.blynk, dict(self.leds), ev.serial)
+            TickRecord(t_ms, wall, truth, s.raw, s.mv, ev.blynk, dict(self.leds), ev.serial)
         )
 
     # ---- HTTP surface of the firmware ----
@@ -122,7 +126,8 @@ class Engine:
         with self.lock:
             t = self.now_ms() if t_ms is None else t_ms
             self.advance_to(t)
-            return self.fw.api(t, self.raws(t))
+            s = self.adc(t)
+            return self.fw.api(t, s.raw, s.mv)
 
     def api_v2(self, t_ms: int | None = None) -> dict:
         """N-panel farm view (emulator-only, versioned contract)."""
