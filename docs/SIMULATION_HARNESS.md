@@ -172,7 +172,7 @@ uv run python -m sim poll --url http://127.0.0.1:8080 --interval 2   # UE refere
 uv run python -m sim replay recording.jsonl  # replay a session downloaded from /recording
 ```
 
-To try the stock dashboard against the Python backend before the F1 fix, force CORS on: `curl -X POST localhost:8080/control -d '{"network":{"cors":true}}' -H 'content-type: application/json'`.
+With F1 fixed the firmware (and the reference model) send `Access-Control-Allow-Origin: *`, so `index.html` opened from `file://` can read `/api` directly. `{"network":{"cors":false}}` on `/control` simulates the old firmware.
 
 ---
 

@@ -107,10 +107,6 @@ def test_ui_persists_esp_ip(page: Page, emulator):
 
 
 @pytest.mark.covers("FEAT-WEBUI", "FEAT-API")
-@pytest.mark.xfail(
-    reason="F1: firmware sends no CORS header, so the browser blocks the dashboard's fetch",
-    strict=True,
-)
 def test_ui_works_with_firmware_default_headers(page: Page, emulator):
     srv = emulator("lab_bench")  # cors=None: headers exactly as the firmware model sends them
     connect(page, srv)
@@ -119,7 +115,6 @@ def test_ui_works_with_firmware_default_headers(page: Page, emulator):
 
 @pytest.mark.fil
 @pytest.mark.covers("FEAT-WEBUI", "HARN-FIL")
-@pytest.mark.xfail(reason="F1: real firmware (FIL) sends no CORS header", strict=True)
 def test_ui_works_against_real_firmware(page: Page, emulator, fil_exe):
     srv = emulator("lab_bench", backend="fil")
     connect(page, srv)

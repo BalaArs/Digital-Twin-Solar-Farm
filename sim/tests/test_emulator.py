@@ -53,7 +53,7 @@ def test_api_v2_contract_and_panel_faults():
 
 
 @pytest.mark.covers("FEAT-API")
-@pytest.mark.parametrize("cors,expected", [(None, None), (True, "*"), (False, None)])
+@pytest.mark.parametrize("cors,expected", [(None, "*"), (True, "*"), (False, None)])
 def test_cors_toggle(cors, expected):
     c, _ = client(cors=cors)
     assert c.get("/api").headers.get("access-control-allow-origin") == expected
