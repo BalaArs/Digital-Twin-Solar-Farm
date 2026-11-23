@@ -9,17 +9,19 @@ from sim.adc import PIN_A, PIN_B, PIN_C, PIN_D
 
 
 @pytest.mark.covers("FEAT-CAL")
-@pytest.mark.parametrize("raw,volts", [(0, 0.0), (4095, 10.0), (2048, 5.0012), (409, 0.9988)])
-def test_voltage_formula(raw, volts):
-    assert fm.read_voltage(raw) == pytest.approx(volts, abs=1e-4)
+@pytest.mark.parametrize(
+    "mv,volts", [(0, 0.0), (3300, 10.0), (1650, 5.0), (330, 1.0), (331, 1.00303)]
+)
+def test_voltage_formula(mv, volts):
+    assert fm.read_voltage(mv) == pytest.approx(volts, abs=1e-4)
 
 
 @pytest.mark.covers("FEAT-CAL")
 @pytest.mark.parametrize(
-    "raw,amps", [(2047, 0.0), (2048, 0.0033), (3000, 6.2866), (4095, 13.5135), (0, 0.0)]
+    "mv,amps", [(1666, 0.0), (1667, 0.0027), (2000, 2.7027), (3300, 13.2432), (0, 0.0)]
 )
-def test_current_formula_and_negative_clamp(raw, amps):
-    assert fm.read_current(raw) == pytest.approx(amps, abs=1e-3)
+def test_current_formula_and_negative_clamp(mv, amps):
+    assert fm.read_current(mv) == pytest.approx(amps, abs=1e-3)
 
 
 @pytest.mark.covers("FEAT-CLS")
@@ -51,10 +53,10 @@ def test_tick_and_api_payload_format():
     raws = {PIN_A: 2800, PIN_B: 2790, PIN_C: 2770, PIN_D: 2200}
     ev = m.tick(2000, raws)
     assert [p for p, _ in ev.blynk] == [0, 1, 2, 3, 4, 5]
-    assert ev.serial == ["A: 6.84 V | B: 6.81 V | C: 6.76 V | D Current: 1.01 A"]
+    assert ev.serial == ["A: 6.84 V | B: 6.81 V | C: 6.76 V | D Current: 0.86 A"]
     body = m.api(2500, raws).body
     assert body == (
-        '{"PanelA_Voltage":6.84,"PanelB_Voltage":6.81,"PanelC_Voltage":6.76,"PanelD_Current":1.01,'
+        '{"PanelA_Voltage":6.84,"PanelB_Voltage":6.81,"PanelC_Voltage":6.76,"PanelD_Current":0.86,'
         '"Status_PanelAB":"GREEN: Normal","Status_PanelC":"GREEN: Normal",'
         '"Status_PanelA":"GREEN: Normal","Status_PanelB":"GREEN: Normal"}'
     )

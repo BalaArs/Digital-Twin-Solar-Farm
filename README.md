@@ -116,7 +116,7 @@ flowchart TD
 | 5 | **Voltage Sensor A** | Resistive voltage divider (0–10 V input) | `GPIO 34` — ADC1_CH6 | Scales panel voltage to 0–3.3 V for ADC. |
 | 6 | **Voltage Sensor B** | Resistive voltage divider (0–10 V input) | `GPIO 35` — ADC1_CH7 | Scales panel voltage to 0–3.3 V for ADC. |
 | 7 | **Voltage Sensor C** | Resistive voltage divider (0–10 V input) | `GPIO 32` — ADC1_CH4 | Scales panel voltage to 0–3.3 V for ADC. |
-| 8 | **Current Sensor D** | ACS712-05B (5 A, 185 mV/A, 2.5 V offset) | `GPIO 33` — ADC1_CH5 | Measures DC current via Hall effect. |
+| 8 | **Current Sensor D** | ACS712-05B (5 A, 185 mV/A, 2.5 V offset) + **2:3 divider** (10 kΩ series, 20 kΩ to GND) | `GPIO 33` — ADC1_CH5 | Measures DC current via Hall effect. The divider keeps the 0–5 V sensor output inside the ESP32's 0–3.3 V input range. |
 | 9 | **ESP32** | Espressif Dual-Core Xtensa LX6, 240 MHz, 520 KB SRAM, 4 MB Flash | SoC | Edge processing, Wi-Fi, web server, Blynk client. |
 | 10 | **LED Group AB** | 3 × 5 mm LEDs (Red, Yellow, Green) | `R:14` `Y:12` `G:13` | Physical status for the A + B group (its weakest panel). |
 | 11 | **LED Group CD** | 3 × 5 mm LEDs (Red, Yellow, Green) | `R:25` `Y:26` `G:27` | Physical status for Panel C (and D context). |
@@ -183,8 +183,10 @@ flowchart LR
 
 | Measurement | Formula | Notes |
 | :--- | :--- | :--- |
-| **Voltage** | `V = (raw / 4095.0) × 10.0` | 12-bit ADC, 10 V full-scale via voltage divider. |
-| **Current** | `I = ((raw / 4095.0) × 5.0 − 2.5) / 0.185` | ACS712 5A: 185 mV/A sensitivity, 2.5 V zero offset. Negative clamped to 0. |
+| **Voltage** | `V = (mV / 1000) × (10.0 / 3.3)` | `mV = analogReadMilliVolts(pin)` (eFuse-calibrated). 10 V panel → 3.3 V pin divider. |
+| **Current** | `I = (mV / (2/3) − 2500) / 185` | ACS712 5A: 185 mV/A, 2500 mV zero offset (`ACS_ZERO_MV`, trim per board), 2:3 divider undone. Negative clamped to 0. |
+
+> Readings use `analogReadMilliVolts()` instead of raw `analogRead()` codes. The raw ESP32 ADC has a dead zone near 0 V, gain error and saturation near 3.1 V; with the old raw formula that meant roughly 0.7 A of error at 1 A (finding F4).
 
 **Three-State Health Classification:**
 
@@ -304,7 +306,7 @@ flowchart LR
 | 2 | Panel A Voltage | Voltage Divider → GPIO 34 | Analog (0–3.3 V) | Scaled representation of Panel A's 0–10 V output. |
 | 3 | Panel B Voltage | Voltage Divider → GPIO 35 | Analog (0–3.3 V) | Scaled representation of Panel B's 0–10 V output. |
 | 4 | Panel C Voltage | Voltage Divider → GPIO 32 | Analog (0–3.3 V) | Scaled representation of Panel C's 0–10 V output. |
-| 5 | Panel D Current | ACS712 → GPIO 33 | Analog (0–5 V) | Hall-effect current measurement of series string. |
+| 5 | Panel D Current | ACS712 → 2:3 divider → GPIO 33 | Analog (0–3.3 V at the pin) | Hall-effect current measurement of series string. |
 | 6 | Wi-Fi Credentials | Firmware constants | Config | SSID and password for network connectivity. |
 | 7 | Blynk Auth Token | Firmware constants | Config | Authentication for Blynk cloud platform. |
 | 8 | ESP32 IP Address | Web UI text field | Config | Target IP for REST API polling. |
@@ -375,8 +377,8 @@ sequenceDiagram
 | :--- | :--- |
 | Firmware Sampling Interval | 2000 ms |
 | ADC Resolution | 12-bit (4096 levels) |
-| Voltage Measurement Precision | ±0.0024 V (10.0 V / 4095) |
-| Current Measurement Precision | ±0.0066 A (1.22 mV / 0.185) |
+| Voltage Measurement Resolution | 0.003 V (1 mV calibrated step × 10/3.3) |
+| Current Measurement Resolution | 0.008 A (1 mV × 1.5 / 185 mV/A) |
 | REST API Response Size | ~180–220 bytes |
 | REST API Latency (LAN) | < 15 ms |
 | Blynk Cloud Latency | ~50–200 ms (network dependent) |
@@ -454,7 +456,7 @@ Each README feature maps to automated tests. A defect found in the system is rec
 | F1 | Firmware sends no CORS header, so the browser blocks the local web UI's `fetch` | ✅ Fixed (#3) |
 | F2 | `/api` status strings are empty before the first tick and up to 2 s stale | ✅ Fixed (#4) |
 | F3 | Panel B is never classified on its own (a dead B can show only YELLOW) | ✅ AB group follows its weakest panel; per-panel `Status_PanelA/B` added |
-| F4 | Current formula assumes a 0–5 V ADC; ESP32 reads 0–3.3 V | Open: confirm ACS712 wiring |
+| F4 | Current formula assumes a 0–5 V ADC; ESP32 reads 0–3.3 V | ✅ 2:3 ACS712 divider required; calibrated `analogReadMilliVolts()` on all channels |
 | F5 | `setup()` hangs forever without Wi-Fi | ✅ Fixed (#5) |
 | F6 | Wi-Fi credentials committed in the sketch | ✅ Moved to gitignored `secrets.h` (#2) |
 | F7/F8 | Notebook loads the generation CSV as weather data; `r2_score` args reversed; Drive-only paths | ✅ Fixed (#7) |
@@ -527,18 +529,23 @@ cp secrets.example.h secrets.h   # secrets.h is gitignored, never commit it
 #define BLYNK_AUTH_TOKEN    "Your_Auth_Token"
 ```
 
-### 3. Set Up Blynk Dashboard
+### 3. Wire and Calibrate the Current Sensor
+
+- Connect the ACS712 output to GPIO 33 through a **2:3 divider**: 10 kΩ in series, then 20 kΩ to GND. Without it the sensor can drive the pin above 3.3 V.
+- **Calibrate the zero offset:** with no current flowing (panels covered or disconnected), note the `D Current` reading on the Serial Monitor. If it isn't ~0.00 A, adjust `ACS_ZERO_MV` in `Solar_Farm.ino` by `reading × 185` mV and re-flash.
+
+### 4. Set Up Blynk Dashboard
 
 - Create a new template named **Solar Farm** on [blynk.cloud](https://blynk.cloud).
 - Add 6 Datastreams mapped to Virtual Pins `V0`–`V5`.
 - Design your dashboard with gauge and label widgets.
 
-### 4. Open Local Web UI
+### 5. Open Local Web UI
 
 - After ESP32 connects to Wi-Fi, note the IP from the Serial Monitor.
 - Open `index.html` in a browser and enter the ESP32 IP address.
 
-### 5. Connect Unreal Engine
+### 6. Connect Unreal Engine
 
 - Import VaRest plugin (or use built-in HTTP module).
 - Create an HTTP GET Blueprint targeting `http://<ESP32_IP>/api`.

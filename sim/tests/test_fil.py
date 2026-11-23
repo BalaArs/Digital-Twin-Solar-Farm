@@ -81,17 +81,18 @@ def test_fil_differential_10000_random_vectors(fil):
 @pytest.mark.parametrize(
     "a,b,c,ab_led,c_led",
     [
-        (409, 409, 409, "R", "R"),  # 0.9988 V -> RED
-        (410, 410, 410, "Y", "Y"),  # 1.0012 V -> YELLOW
-        (2047, 2047, 2047, "Y", "Y"),  # 4.9988 V -> YELLOW
-        (2048, 2048, 2048, "G", "G"),  # 5.0012 V -> GREEN
-        (4095, 2048, 4095, "G", "G"),  # AB = weakest panel (B, 5.0012 V) -> GREEN
-        (4095, 2047, 0, "Y", "R"),  # B 4.9988 V drags AB to YELLOW
-        (2048, 409, 2048, "R", "G"),  # B dead -> AB RED although A is healthy (F3)
+        (330, 330, 330, "R", "R"),  # 1.000 V -> RED (<= 1.0)
+        (331, 331, 331, "Y", "Y"),  # 1.003 V -> YELLOW
+        (1649, 1649, 1649, "Y", "Y"),  # 4.997 V -> YELLOW
+        (1650, 1650, 1650, "G", "G"),  # 5.000 V -> GREEN
+        (3300, 1650, 3300, "G", "G"),  # AB = weakest panel (B, 5.000 V) -> GREEN
+        (3300, 1649, 0, "Y", "R"),  # B 4.997 V drags AB to YELLOW
+        (1650, 330, 1650, "R", "G"),  # B dead -> AB RED although A is healthy (F3)
     ],
-)  # fmt: skip
+)  # fmt: skip  (values are calibrated millivolts)
 def test_fil_threshold_boundaries(fil, a, b, c, ab_led, c_led):
-    ev = fil.tick(2000, raws(a, b, c, 2048))
+    mv = {PIN_A: a, PIN_B: b, PIN_C: c, PIN_D: 1667}
+    ev = fil.tick(2000, raws(0, 0, 0, 0), mv)
     order = "RYG"
     ab = [ev.leds[p] for p in (RED_AB, YELLOW_AB, GREEN_AB)]
     cd = [ev.leds[p] for p in (RED_CD, YELLOW_CD, GREEN_CD)]

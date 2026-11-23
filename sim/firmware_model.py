@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from .adc import PIN_A, PIN_B, PIN_C, PIN_D
+from .adc import PIN_A, PIN_B, PIN_C, PIN_D, mv_from_raw
 
 RED_AB, YELLOW_AB, GREEN_AB = 14, 12, 13
 RED_CD, YELLOW_CD, GREEN_CD = 25, 26, 27
@@ -24,16 +24,33 @@ STATUS_GREEN = "GREEN: Normal"
 f32 = np.float32
 
 
-def read_voltage(raw: int) -> float:
-    # float voltage = (raw / 4095.0) * 10.0;
-    return float(f32((raw / 4095.0) * 10.0))
+VOLTAGE_DIVIDER_GAIN = 10.0 / 3.3  # #define VOLTAGE_DIVIDER_GAIN (10.0 / 3.3)
+ACS_DIVIDER_RATIO = 2.0 / 3.0  # #define ACS_DIVIDER_RATIO (2.0 / 3.0)
+ACS_ZERO_MV = 2500.0
+ACS_MV_PER_A = 185.0
 
 
-def read_current(raw: int) -> float:
-    # float voltage = (raw / 4095.0) * 5.0; float current = (voltage - 2.5) / 0.185;
-    v = float(f32((raw / 4095.0) * 5.0))
-    c = float(f32((v - 2.5) / 0.185))
+def read_voltage(mv: int) -> float:
+    # uint32_t mv = analogReadMilliVolts(pin); float voltage = (mv / 1000.0) * VOLTAGE_DIVIDER_GAIN;
+    return float(f32((mv / 1000.0) * VOLTAGE_DIVIDER_GAIN))
+
+
+def read_current(mv: int) -> float:
+    # float sensorMv = mv / ACS_DIVIDER_RATIO; float current = (sensorMv - ACS_ZERO_MV) / ACS_MV_PER_A;
+    s = float(f32(mv / ACS_DIVIDER_RATIO))
+    c = float(f32((s - ACS_ZERO_MV) / ACS_MV_PER_A))
     return 0.0 if c < 0 else c
+
+
+def readings(raws: dict[int, int], mvs: dict[int, int] | None) -> tuple[float, float, float, float]:
+    """The four firmware readings from calibrated mV (derived from raw codes if absent)."""
+    mv = mvs if mvs is not None else {p: mv_from_raw(r) for p, r in raws.items()}
+    return (
+        read_voltage(mv[PIN_A]),
+        read_voltage(mv[PIN_B]),
+        read_voltage(mv[PIN_C]),
+        read_current(mv[PIN_D]),
+    )
 
 
 def classify(v: float) -> str:
@@ -93,10 +110,9 @@ class FirmwareModel:
         leds.update(led_levels(self.status_c, RED_CD, YELLOW_CD, GREEN_CD))
         return leds
 
-    def tick(self, t_ms: int, raws: dict[int, int]) -> Events:
+    def tick(self, t_ms: int, raws: dict[int, int], mvs: dict[int, int] | None = None) -> Events:
         """sendData(): fired by BlynkTimer every 2000 ms."""
-        va, vb, vc = read_voltage(raws[PIN_A]), read_voltage(raws[PIN_B]), read_voltage(raws[PIN_C])
-        cd = read_current(raws[PIN_D])
+        va, vb, vc, cd = readings(raws, mvs)
         ev = Events()
         ev.blynk = [(0, va), (1, vb), (2, vc), (3, cd)]
         ev.leds = self.update_leds(va, vb, vc)
@@ -106,10 +122,11 @@ class FirmwareModel:
         ]
         return ev
 
-    def api(self, t_ms: int, raws: dict[int, int]) -> HttpResponse:
+    def api(
+        self, t_ms: int, raws: dict[int, int], mvs: dict[int, int] | None = None
+    ) -> HttpResponse:
         """handleAPI(): re-reads the ADC and classifies those readings (not the last tick's)."""
-        va, vb, vc = read_voltage(raws[PIN_A]), read_voltage(raws[PIN_B]), read_voltage(raws[PIN_C])
-        cd = read_current(raws[PIN_D])
+        va, vb, vc, cd = readings(raws, mvs)
         status_ab = classify(min(va, vb))
         status_c = classify(vc)
         body = (

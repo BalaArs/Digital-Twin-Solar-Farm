@@ -72,6 +72,7 @@ extern HardwareSerial Serial;
 void pinMode(int pin, int mode);
 void digitalWrite(int pin, int level);
 int analogRead(int pin);
+uint32_t analogReadMilliVolts(uint8_t pin);
 void delay(unsigned long ms);
 unsigned long millis();
 
@@ -79,6 +80,7 @@ unsigned long millis();
 namespace fil {
 void emit(const char* fmt, ...);
 void set_adc(int pin, int raw);
+void set_mv(int pin, int mv);
 void set_millis(unsigned long ms);
 void set_wifi(bool up);
 bool wifi_up();

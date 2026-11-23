@@ -37,9 +37,9 @@
   Resolution                     12-bit                  4096 discrete levels
   Input Voltage Range            0–3.3 V                 (Attenuated by default)
   Voltage Measurement Range      0–10.0 V                Post voltage-divider scaling
-  Voltage Step Resolution        0.00244 V               10.0 V / 4095
+  Voltage Step Resolution        0.0030 V                1 mV calibrated step x 10/3.3 (F4)
   Current Measurement Range      0–13.5 A                ACS712 theoretical max (5A model)
-  Current Step Resolution        0.0066 A                (1.22 mV ADC step) / 0.185 mV/A
+  Current Step Resolution        0.0081 A                1 mV x 1.5 (2:3 divider) / 185 mV/A (F4)
   Sampling Time per Channel      ~10 µs                  SAR ADC conversion
   Channels Used                  4                       GPIO 34, 35, 32, 33
   Total ADC Sampling Overhead    ~40 µs                  4 channels per cycle

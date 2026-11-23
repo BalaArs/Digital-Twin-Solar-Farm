@@ -15,7 +15,7 @@ import subprocess
 import threading
 from pathlib import Path
 
-from ..adc import PIN_A, PIN_B, PIN_C, PIN_D
+from ..adc import PIN_A, PIN_B, PIN_C, PIN_D, mv_from_raw
 from ..firmware_model import Events, HttpResponse
 
 HERE = Path(__file__).parent
@@ -162,19 +162,23 @@ class FilFirmware:
         self.p = FilProcess(exe, timeout_s=timeout_s)
         self.wifi = wifi
 
-    def _adc(self, raws: dict[int, int]) -> list[str]:
-        return [f"ADC {pin} {raws[pin]}" for pin in (PIN_A, PIN_B, PIN_C, PIN_D)]
+    def _adc(self, raws: dict[int, int], mvs: dict[int, int] | None = None) -> list[str]:
+        mv = mvs if mvs is not None else {p: mv_from_raw(r) for p, r in raws.items()}
+        pins = (PIN_A, PIN_B, PIN_C, PIN_D)
+        return [f"ADC {p} {raws[p]}" for p in pins] + [f"MV {p} {mv[p]}" for p in pins]
 
     def setup(self) -> Events:
         ev, _ = parse_events(self.p.command(f"WIFI {int(self.wifi)}", "TIME 0", "SETUP"))
         return ev
 
-    def tick(self, t_ms: int, raws: dict[int, int]) -> Events:
-        ev, _ = parse_events(self.p.command(*self._adc(raws), f"TIME {t_ms}", "LOOP"))
+    def tick(self, t_ms: int, raws: dict[int, int], mvs: dict[int, int] | None = None) -> Events:
+        ev, _ = parse_events(self.p.command(*self._adc(raws, mvs), f"TIME {t_ms}", "LOOP"))
         return ev
 
-    def api(self, t_ms: int, raws: dict[int, int], uri: str = "/api") -> HttpResponse:
-        _, http = parse_events(self.p.command(*self._adc(raws), f"TIME {t_ms}", f"GET {uri}"))
+    def api(
+        self, t_ms: int, raws: dict[int, int], mvs: dict[int, int] | None = None, uri: str = "/api"
+    ) -> HttpResponse:
+        _, http = parse_events(self.p.command(*self._adc(raws, mvs), f"TIME {t_ms}", f"GET {uri}"))
         if not http:
             raise FilError("firmware produced no HTTP response")
         return http[-1]

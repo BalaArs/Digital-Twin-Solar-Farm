@@ -119,4 +119,4 @@ def test_blynk_values_match_tick_sample():
     _, e = client(scenario="cloudy_day", ticks=50)
     for rec in e.history:
         b = dict(rec.blynk)
-        assert b[0] == pytest.approx(rec.raws[34] / 4095 * 10, abs=1e-5)
+        assert b[0] == pytest.approx(rec.mvs[34] / 1000 * 10 / 3.3, abs=1e-5)

@@ -40,17 +40,29 @@ WebServer server(80);
 #define BLYNK_CONNECT_TIMEOUT_MS 5000UL
 unsigned long lastWifiRetry = 0;
 
+// ---------------- Calibration (F4) ----------------
+// The ESP32 ADC reads 0-3.3 V. Raw analogRead() codes carry a dead zone near 0 V,
+// gain error and saturation near 3.1 V, so readings use the eFuse-calibrated
+// analogReadMilliVolts() instead.
+// Panel voltages: resistive divider maps 0-10 V at the panel to 0-3.3 V at the pin.
+#define VOLTAGE_DIVIDER_GAIN (10.0 / 3.3)
+// ACS712-05B output (2.5 V at 0 A, up to 5 V) MUST reach GPIO 33 through a 2:3 divider
+// (10 kOhm series, 20 kOhm to GND) to stay inside the ESP32's input range.
+#define ACS_DIVIDER_RATIO (2.0 / 3.0)
+#define ACS_ZERO_MV 2500.0   // sensor output at 0 A; trim per board (README: Calibrate current)
+#define ACS_MV_PER_A 185.0   // ACS712-05B sensitivity
+
 // ---------------- Voltage & Current Reading ----------------
 float readVoltage(int pin) {
-  int raw = analogRead(pin);
-  float voltage = (raw / 4095.0) * 10.0; // 6.9V panels, sensorMax 10V
+  uint32_t mv = analogReadMilliVolts(pin);
+  float voltage = (mv / 1000.0) * VOLTAGE_DIVIDER_GAIN; // 6.9V panels, sensorMax ~10V
   return voltage;
 }
 
 float readCurrent(int pin) {
-  int raw = analogRead(pin);
-  float voltage = (raw / 4095.0) * 5.0;
-  float current = (voltage - 2.5) / 0.185; // ACS712 5A
+  uint32_t mv = analogReadMilliVolts(pin);
+  float sensorMv = mv / ACS_DIVIDER_RATIO;  // undo the 2:3 divider
+  float current = (sensorMv - ACS_ZERO_MV) / ACS_MV_PER_A; // ACS712 5A
   if(current < 0) current = 0; // ignore small negatives
   return current;
 }
