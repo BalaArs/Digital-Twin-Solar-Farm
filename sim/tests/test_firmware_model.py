@@ -40,7 +40,7 @@ def test_leds_one_hot_per_group():
     leds = m.update_leds(6.0, 6.0, 0.5)
     assert (leds[fm.RED_AB], leds[fm.YELLOW_AB], leds[fm.GREEN_AB]) == (0, 0, 1)
     assert (leds[fm.RED_CD], leds[fm.YELLOW_CD], leds[fm.GREEN_CD]) == (1, 0, 0)
-    leds = m.update_leds(6.0, 2.0, 3.0)  # AB average 4.0 -> yellow
+    leds = m.update_leds(6.0, 2.0, 3.0)  # AB = weakest panel (2.0 V) -> yellow
     assert (leds[fm.RED_AB], leds[fm.YELLOW_AB], leds[fm.GREEN_AB]) == (0, 1, 0)
     assert (leds[fm.RED_CD], leds[fm.YELLOW_CD], leds[fm.GREEN_CD]) == (0, 1, 0)
 
@@ -55,8 +55,10 @@ def test_tick_and_api_payload_format():
     body = m.api(2500, raws).body
     assert body == (
         '{"PanelA_Voltage":6.84,"PanelB_Voltage":6.81,"PanelC_Voltage":6.76,"PanelD_Current":1.01,'
-        '"Status_PanelAB":"GREEN: Normal","Status_PanelC":"GREEN: Normal"}'
+        '"Status_PanelAB":"GREEN: Normal","Status_PanelC":"GREEN: Normal",'
+        '"Status_PanelA":"GREEN: Normal","Status_PanelB":"GREEN: Normal"}'
     )
     assert list(json.loads(body)) == [
         "PanelA_Voltage", "PanelB_Voltage", "PanelC_Voltage", "PanelD_Current", "Status_PanelAB", "Status_PanelC",
+        "Status_PanelA", "Status_PanelB",
     ]  # fmt: skip

@@ -112,7 +112,7 @@ Each fault applies inside the window `[start_s, end_s)` and can be added or clea
 
 ## 3. Contracts
 
-* **v1** (`sim/contracts/api_v1.schema.json`): exactly the firmware's six keys, values formatted with two decimals, status strings from a closed enum. Consumed by `index.html` and the UE twin.
+* **v1** (`sim/contracts/api_v1.schema.json`): the firmware's six required keys plus the optional, appended `Status_PanelA`/`Status_PanelB` (F3). Values are formatted with two decimals; status strings come from a closed enum. Consumed by `index.html` and the UE twin; the UE poller colours A and B individually when per-panel statuses are present.
 * **v2** (`sim/contracts/api_v2.schema.json`): versioned, emulator-only, N panels (`farm.n_panels`), each with voltage, current, power and status. The existing consumers are deliberately left on v1.
 
 ---
@@ -143,7 +143,7 @@ Each fault applies inside the window `[start_s, end_s)` and can be added or clea
 |---|---|---|---|
 | F1 | Firmware ↔ web UI | No `Access-Control-Allow-Origin` header, so browsers block `index.html`'s fetch. | ✅ Fixed (#3) |
 | F2 | Firmware | `/api` status strings come from the last tick: empty before the first tick, and up to 2 s stale. | ✅ Fixed (#4) |
-| F3 | Firmware | Panel B is never classified on its own; a dead B with a healthy A shows YELLOW. | Open: needs a product decision (contract change) |
+| F3 | Firmware | Panel B is never classified on its own; a dead B with a healthy A shows YELLOW. | ✅ Fixed: AB group = weakest panel; additive `Status_PanelA/B` fields (v1 schema keeps them optional) |
 | F4 | Firmware / HW | The current formula assumes a 0–5 V ADC, but the ESP32 reads 0–3.3 V. | Open: needs ACS712 wiring confirmation |
 | F5 | Firmware | `setup()` busy-waits forever without Wi-Fi. | ✅ Fixed (#5); on-device check pending |
 | F6 | Security | Wi-Fi SSID and password committed in the sketch. | ✅ Fixed (#2); password still in history, so rotate it |
