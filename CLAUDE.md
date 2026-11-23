@@ -18,6 +18,11 @@ Architecture: `docs/SIMULATION_HARNESS.md`. Plan, criteria and status: `docs/SIM
 - ESP32 compile check: arduino-cli requires the folder name to match the sketch name, so copy first:
   `d=$(mktemp -d)/Solar_Farm && mkdir -p $d && cp Solar_Farm.ino $d/ && { [ -f secrets.example.h ] && cp secrets.example.h $d/secrets.h; true; } && arduino-cli compile -b esp32:esp32:esp32 $d`
 
+## Claude tooling
+- Skills: `run-scenario` (simulate or generate data), `add-fault` (new failure mode), `sut-fix-pr` (fix an F<n> defect as its own PR).
+- Agent: `test-runner` (Sonnet). Delegate suite runs to it so test logs stay out of the main context.
+- MCP: `playwright` in `.mcp.json`, for interactive debugging of `index.html` and `/control`. The automated tests use pytest-playwright and do not need it.
+
 ## Rules
 - SUT files (`Solar_Farm.ino`, `index.html`, `Untitled3.ipynb`) change **only on `fix/*` branches**. Each fix is one defect per PR (F1–F9 in `docs/SIMULATION_HARNESS.md`). The fix removes that defect's `xfail(strict=True)` marker, and it must update `sim/firmware_model.py` whenever firmware behaviour changes. Harness work goes on other branches.
 - Every new fault or scenario gets a YAML scenario, a test, and a row in the coverage report.
