@@ -77,10 +77,6 @@ def test_ui_flags_bad_responses_as_disconnected(page: Page, emulator, mode):
 
 
 @pytest.mark.covers("FEAT-WEBUI")
-@pytest.mark.xfail(
-    reason="F9: fetch() has no timeout; a hung ESP32 never flips the UI to Disconnected",
-    strict=True,
-)
 def test_ui_detects_hung_device(page: Page, emulator):
     srv = emulator("lab_bench", cors=True)
     connect(page, srv)
