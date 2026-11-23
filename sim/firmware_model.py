@@ -108,17 +108,19 @@ class FirmwareModel:
         return ev
 
     def api(self, t_ms: int, raws: dict[int, int]) -> HttpResponse:
-        """handleAPI(): re-reads the ADC, but reuses the status strings of the last sendData()."""
+        """handleAPI(): re-reads the ADC and classifies those readings (not the last tick's)."""
         va, vb, vc = read_voltage(raws[PIN_A]), read_voltage(raws[PIN_B]), read_voltage(raws[PIN_C])
         cd = read_current(raws[PIN_D])
+        status_ab = classify(float(f32(float(f32(f32(va) + f32(vb))) / 2.0)))
+        status_c = classify(vc)
         body = (
             "{"
             f'"PanelA_Voltage":{fmt2(va)},'
             f'"PanelB_Voltage":{fmt2(vb)},'
             f'"PanelC_Voltage":{fmt2(vc)},'
             f'"PanelD_Current":{fmt2(cd)},'
-            f'"Status_PanelAB":"{self.status_ab}",'
-            f'"Status_PanelC":"{self.status_c}"'
+            f'"Status_PanelAB":"{status_ab}",'
+            f'"Status_PanelC":"{status_c}"'
             "}"
         )
         # server.sendHeader("Access-Control-Allow-Origin", "*") before server.send()

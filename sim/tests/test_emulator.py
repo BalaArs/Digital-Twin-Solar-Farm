@@ -33,9 +33,6 @@ def test_api_v1_contract():
 
 
 @pytest.mark.covers("FEAT-API", "FEAT-UE")
-@pytest.mark.xfail(
-    reason="F2: /api status strings are empty until the first sendData() tick", strict=True
-)
 def test_api_cold_start_has_valid_status():
     c, _ = client(ticks=0)
     assert check_v1_body(c.get("/api").text) == []
