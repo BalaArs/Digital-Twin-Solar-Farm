@@ -141,16 +141,16 @@ Each fault applies inside the window `[start_s, end_s)` and can be added or clea
 
 | ID | Area | Finding | Status |
 |---|---|---|---|
-| F1 | Firmware ↔ web UI | No `Access-Control-Allow-Origin` header, so browsers block `index.html`'s fetch. | Fix PR |
-| F2 | Firmware | `/api` status strings come from the last tick: empty before the first tick, and up to 2 s stale. | Fix PR |
+| F1 | Firmware ↔ web UI | No `Access-Control-Allow-Origin` header, so browsers block `index.html`'s fetch. | ✅ Fixed (#3) |
+| F2 | Firmware | `/api` status strings come from the last tick: empty before the first tick, and up to 2 s stale. | ✅ Fixed (#4) |
 | F3 | Firmware | Panel B is never classified on its own; a dead B with a healthy A shows YELLOW. | Open: needs a product decision (contract change) |
 | F4 | Firmware / HW | The current formula assumes a 0–5 V ADC, but the ESP32 reads 0–3.3 V. | Open: needs ACS712 wiring confirmation |
-| F5 | Firmware | `setup()` busy-waits forever without Wi-Fi. | Fix PR |
-| F6 | Security | Wi-Fi SSID and password committed in the sketch. | Fix PR (move to `secrets.h`) |
-| F7 | Notebook | The generation CSV is loaded as `weather_data`. | Fix PR (with F8) |
-| F8 | Notebook | `r2_score` arguments reversed; `DATE`/`TIME` never derived; Drive paths hard-coded. | Fix PR (with F7) |
-| F9 | Web UI | `fetch()` has no timeout, so a hung device never shows Disconnected. | Fix PR |
-| F10 | Notebook | Linear regression on unscaled features (`TOTAL_YIELD` ≈ 1e9) is ill-conditioned; R² collapses to ≈ 0 once the real weather features are used. | Fix PR (with F7/F8: `StandardScaler` pipeline) |
+| F5 | Firmware | `setup()` busy-waits forever without Wi-Fi. | ✅ Fixed (#5); on-device check pending |
+| F6 | Security | Wi-Fi SSID and password committed in the sketch. | ✅ Fixed (#2); password still in history, so rotate it |
+| F7 | Notebook | The generation CSV is loaded as `weather_data`. | ✅ Fixed (#7) |
+| F8 | Notebook | `r2_score` arguments reversed; `DATE`/`TIME` never derived; Drive paths hard-coded. | ✅ Fixed (#7) |
+| F9 | Web UI | `fetch()` has no timeout, so a hung device never shows Disconnected. | ✅ Fixed (#6) |
+| F10 | Notebook | Linear regression on unscaled features (`TOTAL_YIELD` ≈ 1e9) is ill-conditioned; R² collapses to ≈ 0 once the real weather features are used. | ✅ Fixed (#7, `StandardScaler` pipeline) |
 
 ---
 

@@ -445,15 +445,15 @@ Each README feature maps to automated tests. A defect found in the system is rec
 
 | ID | Finding | Resolution |
 |---|---|---|
-| F1 | Firmware sends no CORS header, so the browser blocks the local web UI's `fetch` | Firmware fix PR |
-| F2 | `/api` status strings are empty before the first tick and up to 2 s stale | Firmware fix PR |
+| F1 | Firmware sends no CORS header, so the browser blocks the local web UI's `fetch` | ✅ Fixed (#3) |
+| F2 | `/api` status strings are empty before the first tick and up to 2 s stale | ✅ Fixed (#4) |
 | F3 | Panel B is never classified on its own (a dead B can show only YELLOW) | Open: contract decision |
 | F4 | Current formula assumes a 0–5 V ADC; ESP32 reads 0–3.3 V | Open: confirm ACS712 wiring |
-| F5 | `setup()` hangs forever without Wi-Fi | Firmware fix PR |
-| F6 | Wi-Fi credentials committed in the sketch | Moved to gitignored `secrets.h` |
-| F7/F8 | Notebook loads the generation CSV as weather data; `r2_score` args reversed; Drive-only paths | Notebook fix PR |
-| F9 | Web UI `fetch` has no timeout (a hung device never shows Disconnected) | Web UI fix PR |
-| F10 | Notebook regression on unscaled ~1e9 `TOTAL_YIELD` features is ill-conditioned (R² ≈ 0) | Notebook fix PR |
+| F5 | `setup()` hangs forever without Wi-Fi | ✅ Fixed (#5) |
+| F6 | Wi-Fi credentials committed in the sketch | ✅ Moved to gitignored `secrets.h` (#2) |
+| F7/F8 | Notebook loads the generation CSV as weather data; `r2_score` args reversed; Drive-only paths | ✅ Fixed (#7) |
+| F9 | Web UI `fetch` has no timeout (a hung device never shows Disconnected) | ✅ Fixed (#6) |
+| F10 | Notebook regression on unscaled ~1e9 `TOTAL_YIELD` features is ill-conditioned (R² ≈ 0) | ✅ Fixed (#7) |
 
 ---
 
