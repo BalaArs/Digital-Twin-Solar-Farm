@@ -150,6 +150,7 @@ Each fault applies inside the window `[start_s, end_s)` and can be added or clea
 | F7 | Notebook | The generation CSV is loaded as `weather_data`. | Fix PR (with F8) |
 | F8 | Notebook | `r2_score` arguments reversed; `DATE`/`TIME` never derived; Drive paths hard-coded. | Fix PR (with F7) |
 | F9 | Web UI | `fetch()` has no timeout, so a hung device never shows Disconnected. | Fix PR |
+| F10 | Notebook | Linear regression on unscaled features (`TOTAL_YIELD` ≈ 1e9) is ill-conditioned; R² collapses to ≈ 0 once the real weather features are used. | Fix PR (with F7/F8: `StandardScaler` pipeline) |
 
 ---
 
