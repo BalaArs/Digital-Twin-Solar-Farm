@@ -121,13 +121,14 @@ def test_fil_status_consistent_with_voltages(fil):
 
 
 @pytest.mark.covers("FEAT-MON", "FEAT-API")
-@pytest.mark.xfail(reason="F5: setup() busy-waits forever when Wi-Fi is unavailable", strict=True)
 def test_fil_boots_without_wifi(fil_exe):
     f = FilFirmware(fil_exe, wifi=False, timeout_s=1.5)
     try:
-        f.setup()
-        f.tick(2000, raws(2800, 2800, 2800, 2200))
-        assert f.api(2500, raws(2800, 2800, 2800, 2200)).status == 200
+        ev = f.setup()  # bounded wait: millis() reaches ~15 s inside setup()
+        assert any("offline" in ln for ln in ev.serial)
+        tick = f.tick(20_000, raws(2800, 2800, 2800, 2200))
+        assert tick.leds and not tick.blynk  # LEDs still driven, Blynk writes dropped offline
+        assert f.api(20_500, raws(2800, 2800, 2800, 2200)).status == 200
     except FilTimeout:
         pytest.fail("firmware hung in setup() with Wi-Fi down")
     finally:
